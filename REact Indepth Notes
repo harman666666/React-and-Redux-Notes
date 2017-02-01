@@ -1,0 +1,1958 @@
+Advanced React Notes
+////////////////////////////////////////////////////
+Dev tools
+
+
+When you see something wrong in the UI, you can use React Developer Tools 
+to inspect the props and move up the tree until you find the component 
+responsible for updating the state. This lets you trace the bugs to their source:
+
+
+
+////////////////////////////////////////////////////
+JSX
+
+Consider this variable declaration:
+
+const element = <h1>Hello, world!</h1>;
+
+This is JSX. This is how you embedd into JSX:
+
+function formatName(user) {
+  return user.firstName + ' ' + user.lastName;
+}
+
+const user = {
+  firstName: 'Harper',
+  lastName: 'Perez'
+};
+
+const element = (
+  <h1>
+    Hello, {formatName(user)}!
+  </h1>
+);
+
+ReactDOM.render(
+  element,
+  document.getElementById('root')
+);
+
+JSX is an Expression Too #
+After compilation, JSX expressions become regular JavaScript objects.
+
+This means that you can use JSX inside of if statements and for loops, 
+assign it to variables, accept it as arguments, and return it from functions:
+
+function getGreeting(user) {
+  if (user) {
+    return <h1>Hello, {formatName(user)}!</h1>;
+  }
+  return <h1>Hello, Stranger.</h1>;
+}
+
+To specifiy attributes in JSX use quotes or braces :
+
+const element = <div tabIndex="0"></div>;
+const element = <img src={user.avatarUrl}></img>;
+
+JSX Prevents Injection Attacks
+It is safe to embed user input in JSX:
+
+const title = response.potentiallyMaliciousInput;
+// This is safe:
+const element = <h1>{title}</h1>;
+
+By default, React DOM escapes any values embedded in JSX before rendering them. 
+Thus it ensures that you can never inject anything that's not explicitly written 
+in your application. Everything is converted to a string before being rendered. 
+This helps prevent XSS (cross-site-scripting) attacks.
+
+
+Babel compiles JSX down to React.createElement() calls.
+
+These two examples are identical:
+
+const element = (
+  <h1 className="greeting">
+    Hello, world!
+  </h1>
+);
+
+const element = React.createElement(
+  'h1',
+  {className: 'greeting'},
+  'Hello, world!'
+);
+
+Creates an object liek this:
+
+// Note: this structure is simplified
+const element = {
+  type: 'h1',
+  props: {
+    className: 'greeting',
+    children: 'Hello, world'
+  }
+};
+
+/////////////////////////////////////////////////////////////////////////
+
+Rendering Elements:
+
+React elements are immutable. Once you create an element, 
+you can't change its children or attributes. 
+An element is like a single frame in a movie: it represents 
+the UI at a certain point in time.
+
+
+function tick() {
+  const element = (
+    <div>
+      <h1>Hello, world!</h1>
+      <h2>It is {new Date().toLocaleTimeString()}.</h2>
+    </div>
+  );
+  ReactDOM.render(
+    element,
+    document.getElementById('root')
+  );
+}
+
+setInterval(tick, 1000);
+
+
+It calls ReactDOM.render() every second from a setInterval() callback.
+
+//////////////////////////////////////////////////////////////////////////
+
+Components: 
+
+Functional Components:
+
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+
+You can also use an ES6 class to define a component:
+
+class Welcome extends React.Component {
+  render() {
+    return <h1>Hello, {this.props.name}</h1>;
+  }
+}
+
+Top two components functionally equivalent.
+
+This code renders "Hello, Sara" on the page:
+
+function Welcome(props) {
+  return <h1>Hello, {props.name}</h1>;
+}
+
+const element = <Welcome name="Sara" />;
+
+ReactDOM.render(
+  element,
+  document.getElementById('root')
+);
+
+
+Always start component names with a capital letter.
+For example, <div /> represents a DOM tag, but
+ <Welcome /> represents a component and requires 
+Welcome to be in scope.
+
+
+Components must return a single root element. This is why we added a <div> 
+to contain all the component elements in a container.
+
+
+Props are read only. 
+All React components must act like pure functions with respect to their props.
+
+function sum(a, b) {
+  return a + b;
+}
+
+Such functions are called "pure" because they do not attempt to change 
+their inputs, and always return the same result for the same inputs.
+
+/////////////////////////////////////////////////////////////
+
+States and lifecycles:
+
+We want to recreate the clock ticking thing so we refactored the code:
+
+function Clock(props) {
+  return (
+    <div>
+      <h1>Hello, world!</h1>
+      <h2>It is {props.date.toLocaleTimeString()}.</h2>
+    </div>
+  );
+}
+
+function tick() {
+  ReactDOM.render(
+    <Clock date={new Date()} />,
+    document.getElementById('root')
+  );
+}
+
+setInterval(tick, 1000);
+
+Still need internal Staate doe~~~~
+State is similar to props, but it is private and fully controlled by the component.
+
+We mentioned before that components defined as classes have some additional 
+features. Local state is exactly that: a feature available only to classes.
+
+Converting a Function to a Class
+You can convert a functional component like Clock to a class in five steps:
+
+1. Create an ES6 class with the same name that extends React.Component.
+2. Add a single empty method to it called render().
+3. Move the body of the function into the render() method.
+4. Replace props with this.props in the render() body.
+5. Delete the remaining empty function declaration.
+
+
+class Clock extends React.Component {
+  render() {
+    return (
+      <div>
+        <h1>Hello, world!</h1>
+        <h2>It is {this.props.date.toLocaleTimeString()}.</h2>
+      </div>
+    );
+  }
+}
+
+Adding Local State to this CLass:
+
+1) Replace this.props.date with this.state.date in the render() method:
+2) Add a class constructor that assigns the initial this.state:
+3) Call super(props) in constructor .
+4) Remove the date prop from the <Clock /> element:
+
+Result:
+
+class Clock extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {date: new Date()};
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Hello, world!</h1>
+        <h2>It is {this.state.date.toLocaleTimeString()}.</h2>
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(
+  <Clock />,
+  document.getElementById('root')
+);
+
+
+
+We want to set up a timer whenever the Clock is rendered to the 
+DOM for the first time. This is called "mounting" in React.
+We also want to clear that timer whenever the DOM produced by the 
+Clock is removed. This is called "unmounting" in React.
+We can declare special methods on the component class to run some
+ code when a component mounts and unmounts:
+These methods are called "lifecycle hooks".
+The componentDidMount() hook runs after the component output has been 
+rendered to the DOM. This is a good place to set up a timer:
+We will tear down the timer in the componentWillUnmount() lifecycle hook:
+Finally, we will implement the tick() method that runs every second.
+It will use this.setState() to schedule updates to the component local state:
+
+
+class Clock extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {date: new Date()};
+  }
+
+  componentDidMount() {
+    this.timerID = setInterval(
+      () => this.tick(),
+      1000
+    );
+  }
+
+  componentWillUnmount() {
+    clearInterval(this.timerID);
+  }
+
+  tick() {
+    this.setState({
+      date: new Date()
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <h1>Hello, world!</h1>
+        <h2>It is {this.state.date.toLocaleTimeString()}.</h2>
+      </div>
+    );
+  }
+}
+
+Note how we save the timer ID right on this.
+While this.props is set up by React itself and this.state has a 
+special meaning, you are free to add additional fields to the class 
+manually if you need to store something 
+that is not used for the visual output.
+If you don't use something in render(), 
+it shouldn't be in the state.
+
+Finally, we will implement the tick() method 
+that runs every second.It will use this.setState() 
+to schedule updates 
+to the component local state:
+
+//////////////////////////////////////////////////////////////////
+
+Using State Correctly:
+
+Three things you should know about setState():
+
+1. DO NOT MODIFY STATE DIRECTLY: 
+
+For example, this will not re-render a component:
+
+// Wrong
+this.state.comment = 'Hello';
+Instead, use setState():
+
+// Correct
+this.setState({comment: 'Hello'});
+The only place where you can assign this.state is the constructor.
+
+2. STATE UPDATES MAY BE ASYNCHRONOUS
+
+React may batch multiple setState() 
+calls into a single update for performance.
+Because this.props and this.state may be updated asynchronously, 
+you should not rely on their values for calculating the next state.
+
+For example, this code may fail to update the counter:
+
+// Wrong
+this.setState({
+  counter: this.state.counter + this.props.increment,
+});
+
+To fix it, use a second form of setState() 
+that accepts a function rather than an object. 
+That function will receive the previous state as the
+ first argument, and the props at the time the update 
+is applied as the second argument:
+
+// Correct
+this.setState((prevState, props) => ({
+  counter: prevState.counter + props.increment
+}));
+
+OR
+
+// Correct
+this.setState(function(prevState, props) {
+  return {
+    counter: prevState.counter + props.increment
+  };
+});
+
+3. STATE UPDATES ARE MERGED
+
+When you call setState(), React merges the object you 
+provide into the current state.
+
+For example, your state may contain several independent variables:
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      posts: [],
+      comments: []
+    };
+  }
+Then you can update them independently with separate setState() calls:
+
+  componentDidMount() {
+    fetchPosts().then(response => {
+      this.setState({
+        posts: response.posts
+      });
+    });
+
+    fetchComments().then(response => {
+      this.setState({
+        comments: response.comments
+      });
+    });
+  }
+The merging is shallow, so this.setState({comments}) leaves this.state.posts 
+intact, but completely replaces this.state.comments.
+
+Neither parent nor child components can know if a certain component is stateful or
+ stateless, and they shouldn't care whether it is defined as a function or a class.
+
+This is why state is often called local or encapsulated. It is not 
+accessible to any component other than the one that owns and sets it.
+
+A component may choose to pass its state down as props to its child components:
+
+<h2>It is {this.state.date.toLocaleTimeString()}.</h2>
+This also works for user-defined components:
+
+<FormattedDate date={this.state.date} />
+The FormattedDate component would receive the date in its 
+props and wouldn't know whether it came from the Clock's state, 
+from the Clock's props, or was typed by hand:
+
+function FormattedDate(props) {
+  return <h2>It is {props.date.toLocaleTimeString()}.</h2>;
+}
+
+
+This is commonly called a "top-down" or "unidirectional" data flow. 
+Any state is always owned by some specific component, and any data or 
+UI derived from that state can only affect components "below" them in the tree.
+
+///////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+
+HANDLING EVENTS :
+
+
+
+Handling events with React elements is very similar to handling events on DOM elements. 
+There are some syntactic differences:
+
+React events are named using camelCase, rather than lowercase.
+With JSX you pass a function as the event handler, rather than a string.
+For example, the HTML:
+
+<button onclick="activateLasers()">
+  Activate Lasers
+</button>
+
+is slightly different in React:
+
+<button onClick={activateLasers}>
+  Activate Lasers
+</button>
+
+Another difference is that you cannot return false to prevent default behavior in React. 
+You must call preventDefault explicitly. For example, with plain HTML, to prevent the 
+default link behavior of opening a new page, you can write:
+
+<a href="#" onclick="console.log('The link was clicked.'); return false">
+  Click me
+</a>
+
+In React, this could instead be:
+
+function ActionLink() {
+  function handleClick(e) {
+    e.preventDefault();
+    console.log('The link was clicked.');
+  }
+
+  return (
+    <a href="#" onClick={handleClick}>
+      Click me
+    </a>
+  );
+}
+
+Here, e is a synthetic event. React defines these synthetic events according to the 
+W3C spec, so you don't need to worry about cross-browser compatibility. See the 
+SyntheticEvent reference guide to learn more.
+
+When using React you should generally not need to call addEventListener to add listeners
+ to a DOM element after it is created. Instead, just provide a listener when the element 
+ is initially rendered.
+
+When you define a component using an ES6 class, a common pattern is for an event handler 
+to be a method on the class. For example:
+
+
+class Toggle extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {isToggleOn: true};
+
+    // This binding is necessary to make `this` work in the callback
+    this.handleClick = this.handleClick.bind(this);
+  }
+
+  handleClick() {
+    this.setState(prevState => ({
+      isToggleOn: !prevState.isToggleOn
+    }));
+  }
+
+  render() {
+    return (
+      <button onClick={this.handleClick}>
+        {this.state.isToggleOn ? 'ON' : 'OFF'}
+      </button>
+    );
+  }
+}
+
+ReactDOM.render(
+  <Toggle />,
+  document.getElementById('root')
+);
+
+
+You have to be careful about the meaning of this in JSX callbacks. In JavaScript, class 
+methods are not bound by default. If you forget to bind this.handleClick and pass it to
+ onClick, this will be undefined when the function is actually called. This is not React-specific behavior; 
+ it is a part of how functions work in JavaScript. Generally, if you refer to a method 
+ without () after it, such as onClick={this.handleClick}, you should bind that method.
+If calling bind annoys you, there are two ways you can get around this. If you are using the 
+experimental property initializer syntax, you can use property initializers to correctly 
+bind callbacks:
+
+class LoggingButton extends React.Component {
+  // This syntax ensures `this` is bound within handleClick.
+  // Warning: this is *experimental* syntax.
+  handleClick = () => {
+    console.log('this is:', this);
+  }
+
+  render() {
+    return (
+      <button onClick={this.handleClick}>
+        Click me
+      </button>
+    );
+  }
+}
+
+
+
+If you aren't using property initializer syntax, you can use an arrow function in the callback:
+
+class LoggingButton extends React.Component {
+  handleClick() {
+    console.log('this is:', this);
+  }
+
+  render() {
+    // This syntax ensures `this` is bound within handleClick
+    return (
+      <button onClick={(e) => this.handleClick(e)}>
+        Click me
+      </button>
+    );
+  }
+}
+
+The problem with this syntax is that a different callback is created each time the LoggingButton renders. 
+In most cases, this is fine. However, if this callback is passed as a prop to lower components, 
+those components might do an extra re-rendering. We generally recommend binding in the
+ constructor or using the property initializer syntax, to 
+ avoid this sort of performance problem.
+
+Synthetic Event: 
+
+Your event handlers will be passed instances of SyntheticEvent, a cross-browser wrapper around the 
+browser's native event. It has the same interface as the browser's native event, including
+ stopPropagation() and preventDefault(), except the events work identically across all browsers.
+If you find that you need the underlying browser event for some reason, simply use the nativeEvent
+ attribute to get it. Every SyntheticEvent object has the following attributes:
+
+boolean bubbles
+boolean cancelable
+DOMEventTarget currentTarget
+boolean defaultPrevented
+number eventPhase
+boolean isTrusted
+DOMEvent nativeEvent
+void preventDefault()
+boolean isDefaultPrevented()
+void stopPropagation()
+boolean isPropagationStopped()
+DOMEventTarget target
+number timeStamp
+string type
+
+The SyntheticEvent is pooled. This means that the SyntheticEvent object will be reused and all 
+properties will be nullified after the event callback has been invoked. This is for performance 
+reasons. As such, you cannot access the event in an asynchronous way.
+f you want to access the event properties in an asynchronous way, you should call 
+event.persist() on the event, which will remove the synthetic event from the pool
+ and allow references to the event to be retained by user code.
+
+function onClick(event) {
+  console.log(event); // => nullified object.
+  console.log(event.type); // => "click"
+  const eventType = event.type; // => "click"
+
+  setTimeout(function() {
+    console.log(event.type); // => null
+    console.log(eventType); // => "click"
+  }, 0);
+
+  // Won't work. this.state.clickEvent will only contain null values.
+  this.setState({clickEvent: event});
+
+  // You can still export event properties.
+  this.setState({eventType: event.type});
+}
+
+React normalizes events so that they have consistent properties across different browsers.
+The event handlers below are triggered by an event in the bubbling phase. To register an 
+event handler for the capture phase, append Capture to the event name; for example, 
+instead of using onClick, you would use onClickCapture to handle the click event 
+in the capture phase.
+
+Clipboard Events
+Composition Events
+Keyboard Events
+Focus Events
+Form Events
+Mouse Events
+Selection Events
+Touch Events
+UI Events
+Wheel Events
+Media Events
+Image Events
+Animation Events
+Transition Events
+
+Clipboard Events
+Event names:
+
+onCopy onCut onPaste
+Properties:
+
+DOMDataTransfer clipboardData
+Composition Events
+Event names:
+
+onCompositionEnd onCompositionStart onCompositionUpdate
+Properties:
+
+string data
+Keyboard Events
+Event names:
+
+onKeyDown onKeyPress onKeyUp
+Properties:
+
+boolean altKey
+number charCode
+boolean ctrlKey
+boolean getModifierState(key)
+string key
+number keyCode
+string locale
+number location
+boolean metaKey
+boolean repeat
+boolean shiftKey
+number which
+Focus Events
+Event names:
+
+onFocus onBlur
+These focus events work on all elements in the React DOM, not just form elements.
+
+Properties:
+
+DOMEventTarget relatedTarget
+Form Events
+Event names:
+
+onChange onInput onSubmit
+For more information about the onChange event, see Forms.
+
+Mouse Events
+Event names:
+
+onClick onContextMenu onDoubleClick onDrag onDragEnd onDragEnter onDragExit
+onDragLeave onDragOver onDragStart onDrop onMouseDown onMouseEnter onMouseLeave
+onMouseMove onMouseOut onMouseOver onMouseUp
+The onMouseEnter and onMouseLeave events propagate from the element being 
+left to the one being entered instead of ordinary bubbling and do not have a capture phase.
+
+Properties:
+
+boolean altKey
+number button
+number buttons
+number clientX
+number clientY
+boolean ctrlKey
+boolean getModifierState(key)
+boolean metaKey
+number pageX
+number pageY
+DOMEventTarget relatedTarget
+number screenX
+number screenY
+boolean shiftKey
+Selection Events
+Event names:
+
+onSelect
+Touch Events
+Event names:
+
+onTouchCancel onTouchEnd onTouchMove onTouchStart
+Properties:
+
+boolean altKey
+DOMTouchList changedTouches
+boolean ctrlKey
+boolean getModifierState(key)
+boolean metaKey
+boolean shiftKey
+DOMTouchList targetTouches
+DOMTouchList touches
+UI Events
+Event names:
+
+onScroll
+Properties:
+
+number detail
+DOMAbstractView view
+Wheel Events
+Event names:
+
+onWheel
+Properties:
+
+number deltaMode
+number deltaX
+number deltaY
+number deltaZ
+Media Events
+Event names:
+
+onAbort onCanPlay onCanPlayThrough onDurationChange onEmptied onEncrypted 
+onEnded onError onLoadedData onLoadedMetadata onLoadStart onPause onPlay 
+onPlaying onProgress onRateChange onSeeked onSeeking onStalled onSuspend 
+onTimeUpdate onVolumeChange onWaiting
+Image Events
+Event names:
+
+onLoad onError
+Animation Events
+Event names:
+
+onAnimationStart onAnimationEnd onAnimationIteration
+Properties:
+
+string animationName
+string pseudoElement
+float elapsedTime
+Transition Events
+Event names:
+
+onTransitionEnd
+Properties:
+
+string propertyName
+string pseudoElement
+float elapsedTime
+
+//////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////
+
+CONDITIONAL RENDERING
+
+Conditional rendering in React works the same way conditions work in JavaScript.
+ Use JavaScript operators like if or the conditional operator to create elements 
+ representing the current state, and let React update the UI to match them.
+
+ Consider these two components:
+
+function UserGreeting(props) {
+  return <h1>Welcome back!</h1>;
+}
+
+function GuestGreeting(props) {
+  return <h1>Please sign up.</h1>;
+}
+
+function Greeting(props) {
+  const isLoggedIn = props.isLoggedIn;
+  if (isLoggedIn) {
+    return <UserGreeting />;
+  }
+  return <GuestGreeting />;
+}
+
+ReactDOM.render(
+  // Try changing to isLoggedIn={true}:
+  <Greeting isLoggedIn={false} />,
+  document.getElementById('root')
+);
+
+////////////////////////////////////////////////////EXAMPLE 2 ELEMENT VARIABLES:
+
+function LoginButton(props) {
+  return (
+    <button onClick={props.onClick}>
+      Login
+    </button>
+  );
+}
+
+function LogoutButton(props) {
+  return (
+    <button onClick={props.onClick}>
+      Logout
+    </button>
+  );
+}
+
+In the example below, we will create a stateful component called LoginControl.
+It will render either <LoginButton /> or <LogoutButton /> depending on its current state. 
+It will also render a <Greeting /> from the previous example:
+
+class LoginControl extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleLoginClick = this.handleLoginClick.bind(this);
+    this.handleLogoutClick = this.handleLogoutClick.bind(this);
+    this.state = {isLoggedIn: false};
+  }
+
+  handleLoginClick() {
+    this.setState({isLoggedIn: true});
+  }
+
+  handleLogoutClick() {
+    this.setState({isLoggedIn: false});
+  }
+
+  render() {
+    const isLoggedIn = this.state.isLoggedIn;
+
+    let button = null;
+    if (isLoggedIn) {
+      button = <LogoutButton onClick={this.handleLogoutClick} />;
+    } else {
+      button = <LoginButton onClick={this.handleLoginClick} />;
+    }
+
+    return (
+      <div>
+        <Greeting isLoggedIn={isLoggedIn} />
+        {button}
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(
+  <LoginControl />,
+  document.getElementById('root')
+);
+
+////////////////////////////////////////////////////////////////////////////////////
+INLINE IF WIHT LOGICAL &&
+
+function Mailbox(props) {
+  const unreadMessages = props.unreadMessages;
+  return (
+    <div>
+      <h1>Hello!</h1>
+      {unreadMessages.length > 0 &&
+        <h2>
+          You have {unreadMessages.length} unread messages.
+        </h2>
+      }
+    </div>
+  );
+}
+
+const messages = ['React', 'Re: React', 'Re:Re: React'];
+ReactDOM.render(
+  <Mailbox unreadMessages={messages} />,
+  document.getElementById('root')
+);
+
+
+It works because in JavaScript, true && expression always evaluates to expression,
+ and false && expression always evaluates to false.
+
+
+ render() {
+  const isLoggedIn = this.state.isLoggedIn;
+  return (
+    <div>
+      {isLoggedIn ? (
+        <LogoutButton onClick={this.handleLogoutClick} />
+      ) : (
+        <LoginButton onClick={this.handleLoginClick} />
+      )}
+    </div>
+  );
+}
+
+Just like in JavaScript, it is up to you to choose an appropriate style based on what 
+you and your team consider more readable. Also remember that whenever conditions become
+too complex, it might be a good time to extract a component.
+
+/////////////////////////////////////////////////////////////////////////////
+
+PREVENT COMPONENT FROM RENDERING
+
+In rare cases you might want a component to hide itself even though it was 
+rendered by another component. To do this return null instead of its render output
+
+function WarningBanner(props) {
+  if (!props.warn) {
+    return null;
+  }
+
+  return (
+    <div className="warning">
+      Warning!
+    </div>
+  );
+}
+
+class Page extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {showWarning: true}
+    this.handleToggleClick = this.handleToggleClick.bind(this);
+  }
+
+  handleToggleClick() {
+    this.setState(prevState => ({
+      showWarning: !prevState.showWarning
+    }));
+  }
+
+  render() {
+    return (
+      <div>
+        <WarningBanner warn={this.state.showWarning} />
+        <button onClick={this.handleToggleClick}>
+          {this.state.showWarning ? 'Hide' : 'Show'}
+        </button>
+      </div>
+    );
+  }
+}
+
+ReactDOM.render(
+  <Page />,
+  document.getElementById('root')
+);
+
+Returning null from a component's render method does not affect the firing
+ of the component's lifecycle methods. For instance, componentWillUpdate 
+ and componentDidUpdate will still be called.
+
+//////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+LISTS AND KEYS JSX
+Use map
+
+
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map((number) => number * 2);
+console.log(doubled);
+
+You can build collections of elements and include them in JSX using curly braces {}.
+Below, we loop through the numbers array using the Javascript map() function. 
+We return an <li> element for each item. Finally, we assign the resulting 
+array of elements to listItems:
+
+Render List:
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    <li key={number.toString()}>
+      {number}
+    </li>
+  );
+  return (
+    <ul>{listItems}</ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+
+Keys help React identify which items have
+ changed, are added, or are removed. 
+Keys should be given to the elements inside the 
+array to give the elements a stable identity:
+When you don't have stable IDs for rendered items, 
+you may use the item index as a key as a last resort:
+We don't recommend using indexes for keys if the items can reorder, 
+as that would be slow. 
+
+Keys only make sense in the context of the surrounding array.
+For example, if you extract a ListItem component, 
+you should keep the key on the 
+<ListItem /> elements in the array rather than on the root <li> element in the 
+ListItem itself.A good rule of thumb is that elements inside the map() call need keys.
+
+Incorrect Usage://///////////////////////
+
+function ListItem(props) {
+  const value = props.value;
+  return (
+    // Wrong! There is no need to specify the key here:
+    <li key={value.toString()}>
+      {value}
+    </li>
+  );
+}
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    // Wrong! The key should have been specified here:
+    <ListItem value={number} />
+  );
+  return (
+    <ul>
+      {listItems}
+    </ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+
+Correct Usage /////////////////////////////
+
+function ListItem(props) {
+  // Correct! There is no need to specify the key here:
+  return <li>{props.value}</li>;
+}
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  const listItems = numbers.map((number) =>
+    // Correct! Key should be specified inside the array.
+    <ListItem key={number.toString()}
+              value={number} />
+  );
+  return (
+    <ul>
+      {listItems}
+    </ul>
+  );
+}
+
+const numbers = [1, 2, 3, 4, 5];
+ReactDOM.render(
+  <NumberList numbers={numbers} />,
+  document.getElementById('root')
+);
+
+KEYS MUST ONLY BE UNIQUE AMONG SIBILINGS
+Keys used within arrays should be unique among their siblings. 
+However they don't need to be globally unique. We can use the 
+same keys when we produce two different arrays:
+
+function Blog(props) {
+  const sidebar = (
+    <ul>
+      {props.posts.map((post) =>
+        <li key={post.id}>
+          {post.title}
+        </li>
+      )}
+    </ul>
+  );
+  const content = props.posts.map((post) =>
+    <div key={post.id}>
+      <h3>{post.title}</h3>
+      <p>{post.content}</p>
+    </div>
+  );
+  return (
+    <div>
+      {sidebar}
+      <hr />
+      {content}
+    </div>
+  );
+}
+
+const posts = [
+  {id: 1, title: 'Hello World', content: 'Welcome to learning React!'},
+  {id: 2, title: 'Installation', content: 'You can install React from npm.'}
+];
+ReactDOM.render(
+  <Blog posts={posts} />,
+  document.getElementById('root')
+);
+
+Keys serve as a hint to React but they don't get passed to your components.
+If you need the same value in your component, pass it explicitly as a 
+prop with a different name:
+
+const content = posts.map((post) =>
+  <Post
+    key={post.id}
+    id={post.id}
+    title={post.title} />
+);
+
+Embedding MAP:
+
+function NumberList(props) {
+  const numbers = props.numbers;
+  return (
+    <ul>
+      {numbers.map((number) =>
+        <ListItem key={number.toString()}
+                  value={number} />
+      )}
+    </ul>
+  );
+}
+
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+
+REACT CONTROLLED COMPONENTS:
+
+In HTML, form elements such as <input>, <textarea>, and <select> typically
+ maintain their own state and update it based on user input. In React, 
+ mutable state is typically kept in the state property of components, 
+ and only updated with setState().
+
+We can combine the two by making the React state be the "single source of truth". 
+Then the React component that renders a form also controls what happens in that form
+ on subsequent user input. An input form element whose value is controlled by React
+  in this way is called a "controlled component".
+
+class NameForm extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {value: ''};
+
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleChange(event) {
+    this.setState({value: event.target.value});
+  }
+
+  handleSubmit(event) {
+    alert('A name was submitted: ' + this.state.value);
+    event.preventDefault();
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit}>
+        <label>
+          Name:
+          <input type="text" value={this.state.value} onChange={this.handleChange} />
+        </label>
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+}
+
+Since the value attribute is set on our form element, the displayed value will always be 
+this.state.value, making the React state the source of truth. Since handleChange runs on
+ every keystroke to update the React state, the displayed value will update as the user types.
+With a controlled component, every state mutation will have an associated handler 
+function. This makes it straightforward to modify or validate user input. For example, 
+if we wanted to enforce that names are written with all uppercase letters, we could 
+write handleChange as:
+
+handleChange(event) {
+  this.setState({value: event.target.value.toUpperCase()});
+}
+
+///////////////////////////////////TEXT AREA
+
+In HTML, a <textarea> element defines its text by its children:
+
+<textarea>
+  Hello there, this is some text in a text area
+</textarea>
+
+In React, a <textarea> uses a value attribute instead. This way, a 
+form using a <textarea> can be written very similarly 
+to a form that uses a single-line input:
+
+class EssayForm extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      value: 'Please write an essay about your favorite DOM element.'
+    };
+
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleChange(event) {
+    this.setState({value: event.target.value});
+  }
+
+  handleSubmit(event) {
+    alert('An essay was submitted: ' + this.state.value);
+    event.preventDefault();
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit}>
+        <label>
+          Name:
+          <textarea value={this.state.value} onChange={this.handleChange} />
+        </label>
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+}
+
+Notice that this.state.value is initialized in the constructor, 
+so that the text area starts off with some text in it.
+
+
+////////////////////////////// SELECT TAG
+
+In HTML, <select> creates a drop-down list. For example, this HTML 
+creates a drop-down list of flavors:
+
+<select>
+  <option value="grapefruit">Grapefruit</option>
+  <option value="lime">Lime</option>
+  <option selected value="coconut">Coconut</option>
+  <option value="mango">Mango</option>
+</select>
+
+Note that the Coconut option is initially selected, 
+because of the selected attribute. React, instead 
+of using this selected attribute, uses a value 
+attribute on the root select tag. This is more 
+convenient in a controlled component because you 
+only need to update it in one place. Overall, this makes it so that
+ <input type="text">, <textarea>, and <select> all work very similarly 
+ - they all accept a value attribute that you can use to 
+ implement a controlled component.For example:
+
+class FlavorForm extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {value: 'coconut'};
+
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleChange(event) {
+    this.setState({value: event.target.value});
+  }
+
+  handleSubmit(event) {
+    alert('Your favorite flavor is: ' + this.state.value);
+    event.preventDefault();
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit}>
+        <label>
+          Pick your favorite La Croix flavor:
+          <select value={this.state.value} onChange={this.handleChange}>
+            <option value="grapefruit">Grapefruit</option>
+            <option value="lime">Lime</option>
+            <option value="coconut">Coconut</option>
+            <option value="mango">Mango</option>
+          </select>
+        </label>
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+}
+
+///////////////////////////////
+HANDLING MULTIPLE INPUTS
+
+When you need to handle multiple controlled input elements, you can 
+add a name attribute to each element and let the handler function 
+choose what to do based on the value of event.target.name.
+
+class Reservation extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      isGoing: true,
+      numberOfGuests: 2
+    };
+
+    this.handleInputChange = this.handleInputChange.bind(this);
+  }
+
+  handleInputChange(event) {
+    const target = event.target;
+    const value = target.type === 'checkbox' ? target.checked : target.value;
+    const name = target.name;
+
+    this.setState({
+      [name]: value
+    });
+  }
+
+  render() {
+    return (
+      <form>
+        <label>
+          Is going:
+          <input
+            name="isGoing"
+            type="checkbox"
+            checked={this.state.isGoing}
+            onChange={this.handleInputChange} />
+        </label>
+        <br />
+        <label>
+          Number of guests:
+          <input
+            name="numberOfGuests"
+            type="number"
+            value={this.state.numberOfGuests}
+            onChange={this.handleInputChange} />
+        </label>
+      </form>
+    );
+  }
+}
+
+Note how we used the ES6 computed property name syntax to update the 
+state key corresponding to the given input name:
+
+this.setState({
+  [name]: value
+});
+
+It is equivalent to this ES5 code:
+
+var partialState = {};
+partialState[name] = value;
+this.setState(partialState);
+
+Also, since setState() automatically merges a partial state into the current 
+state, we only needed to call it with the changed parts.
+
+Alternatives to Controlled Components
+
+It can sometimes be tedious to use controlled components, because you need to write an 
+event handler for every way your data can change and pipe all of the input state through 
+a React component. This can become particularly annoying when you are converting 
+preexisting codebase to React, or integrating a React application with a non-React library.
+In these situations, you might want to check out uncontrolled components, an alternative 
+technique for implementing input forms. In most cases, we recommend using controlled 
+components to implement forms. In a controlled component, form data is handled by a 
+React component. The alternative is uncontrolled components, where form data is handled by the DOM itself.
+To write an uncontrolled component, instead of writing an event handler for every state update, 
+you can use a ref to get form values from the DOM. To write an uncontrolled component, instead of
+ writing an event handler for every state update, you can use a ref to get form values from the DOM.
+
+
+
+class NameForm extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleSubmit(event) {
+    alert('A name was submitted: ' + this.input.value);
+    event.preventDefault();
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.handleSubmit}>
+        <label>
+          Name:
+          <input type="text" ref={(input) => this.input = input} />
+        </label>
+        <input type="submit" value="Submit" />
+      </form>
+    );
+  }
+}
+
+Uncontrolled component keeps the source of truth in the DOM, it is sometimes easier to integrate 
+React and non-React code when using uncontrolled components.
+
+In the React rendering lifecycle, the value attribute on form elements will override the value 
+in the DOM. With an uncontrolled component, you often want React to specify the initial value, 
+but leave subsequent updates uncontrolled. To handle this case, you can specify a default
+Value attribute instead of value.
+
+render() {
+  return (
+    <form onSubmit={this.handleSubmit}>
+      <label>
+        Name:
+        <input
+          defaultValue="Bob"
+          type="text"
+          ref={(input) => this.input = input} />
+      </label>
+      <input type="submit" value="Submit" />
+    </form>
+  );
+}
+
+Likewise, <input type="checkbox"> and <input type="radio"> support defaultChecked, and <select> supports defaultValue.
+
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+
+In the typical React dataflow, props are the only 
+way that parent components interact with 
+their children. To modify a child, you re-render it 
+with new props. However, there are a few 
+cases where you need to imperatively modify a child 
+outside of the typical dataflow. The child
+ to be modified could be an instance of a React 
+ component, or it could be a DOM element. 
+
+
+The REF CALLBACK ATTRIBUTE
+
+React supports a special attribute that you can attach to any component. The ref 
+attribute takes a callback function, and the callback will be executed 
+immediately after the component is mounted or unmounted.
+When the ref attribute is used on an HTML element, the ref callback receives the underlying 
+DOM element as its argument. For example, this code uses the ref callback to store a 
+reference to a DOM node:
+
+class CustomTextInput extends React.Component {
+  constructor(props) {
+    super(props);
+    this.focus = this.focus.bind(this);
+  }
+
+  focus() {
+    // Explicitly focus the text input using the raw DOM API
+    this.textInput.focus();
+  }
+
+  render() {
+    // Use the `ref` callback to store a reference to the text input DOM
+    // element in this.textInput.
+    return (
+      <div>
+        <input
+          type="text"
+          ref={(input) => { this.textInput = input; }} />
+        <input
+          type="button"
+          value="Focus the text input"
+          onClick={this.focus}
+        />
+      </div>
+    );
+  }
+}
+
+React will call the ref callback with the DOM element when the 
+component mounts, and call it with null when it unmounts.
+Using the ref callback just to set a property on the class is a common pattern 
+for accessing DOM elements. The preferred way is to set the property in the 
+ref callback like in the above example. When the ref attribute is used on a 
+custom component, the ref callback receives the mounted instance of the 
+component as its argument. For example, if we wanted to wrap the 
+CustomTextInput above to simulate it being clicked immediately after mounting:
+
+class AutoFocusTextInput extends React.Component {
+  componentDidMount() {
+    this.textInput.focus();
+  }
+
+  render() {
+    return (
+      <CustomTextInput
+        ref={(input) => { this.textInput = input; }} />
+    );
+  }
+}
+
+You may not use the ref attribute on functional components because they don't have instances. 
+You can, however, use the ref attribute inside the functional component:
+
+function CustomTextInput(props) {
+  // textInput must be declared here so the ref callback can refer to it
+  let textInput = null;
+
+  function handleClick() {
+    textInput.focus();
+  }
+
+  return (
+    <div>
+      <input
+        type="text"
+        ref={(input) => { textInput = input; }} />
+      <input
+        type="button"
+        value="Focus the text input"
+        onClick={handleClick}
+      />
+    </div>
+  );  
+}
+
+Caveats
+
+If the ref callback is defined as an inline function, it will get called twice during updates, 
+first with null and then again with the DOM element. This is because a new instance of the function 
+is created with each render, so React needs to clear the old ref and set up the new one. 
+You can avoid this by defining the ref callback as a bound method on the class, 
+but note that it shouldn't matter in most cases.
+
+
+
+//////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////
+
+ALWAYS LIFT STATE UP
+
+
+There should be a single "source of truth" for any data that changes in a React application. 
+Usually, the state is first added to the component that needs it for rendering. Then, if 
+other components also need it, you can lift it up to their closest common ancestor. Instead 
+of trying to sync the state between different components, you should rely on the top-down data flow.
+Lifting state involves writing more "boilerplate" code than two-way binding approaches, 
+but as a benefit, it takes less work to find and isolate bugs. Since any state "lives" in
+ some component and that component alone can change it, the surface area for bugs is greatly
+  reduced. Additionally, you can implement any custom logic to reject or transform user input.
+If something can be derived from either props or state, it probably shouldn't be in the state. 
+For example, instead of storing both celsiusValue and fahrenheitValue, we store just the last edited 
+value and its scale. The value of the other input can always be calculated from them in the render() 
+method. This lets us clear or apply rounding to the other field without losing any precision in the user input.
+
+/////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+
+COMPOSITION VS INHERITANCE
+
+React has a powerful composition model, and we recommend using composition 
+instead of inheritance to reuse code between components. At Facebook, we 
+use React in thousands of components, and we haven't found any use cases 
+where we would recommend creating component inheritance hierarchies.
+Props and composition give you all the flexibility you need to customize a component's 
+look and behavior in an explicit and safe way. Remember that components may accept 
+arbitrary props, including primitive values, React elements, or functions.
+If you want to reuse non-UI functionality between components, we suggest extracting 
+it into a separate JavaScript module. The components may import it and use that function, 
+object, or a class, without extending it.
+
+
+////////////////////Composition Use Cases:
+
+Some components don't know their children ahead of time. 
+This is especially common for components like Sidebar 
+or Dialog that represent generic "boxes".
+We recommend that such components use the special children prop to 
+pass children elements directly into their output:
+
+function FancyBorder(props) {
+  return (
+    <div className={'FancyBorder FancyBorder-' + props.color}>
+      {props.children}
+    </div>
+  );
+}
+
+This lets other components pass arbitrary 
+children to them by nesting the JSX:
+
+Anything inside the <FancyBorder> JSX tag gets passed 
+into the FancyBorder component as a children prop. 
+Since FancyBorder renders {props.children} inside a <div>, 
+the passed elements appear in the final output.
+
+function WelcomeDialog() {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        Welcome
+      </h1>
+      <p className="Dialog-message">
+        Thank you for visiting our spacecraft!
+      </p>
+    </FancyBorder>
+  );
+}
+
+Anything inside the <FancyBorder> JSX tag gets passed
+ into the FancyBorder component as a children prop. 
+Since FancyBorder renders {props.children} inside a <div>, 
+the passed elements appear in the final output.
+
+While this is less common, sometimes you might need multiple "holes" in a component. 
+In such cases you may come up with your own convention instead of using children:
+
+function SplitPane(props) {
+  return (
+    <div className="SplitPane">
+      <div className="SplitPane-left">
+        {props.left}
+      </div>
+      <div className="SplitPane-right">
+        {props.right}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <SplitPane
+      left={
+        <Contacts />
+      }
+      right={
+        <Chat />
+      } />
+  );
+}
+
+//////////////////////////////////SPECIALIZATION
+
+Sometimes we think about components as being "special cases" of other components. 
+For example, we might say that a WelcomeDialog is a special case of Dialog.
+In React, this is also achieved by composition, where a more "specific" 
+component renders a more "generic" one and configures it with props:
+
+function Dialog(props) {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        {props.title}
+      </h1>
+      <p className="Dialog-message">
+        {props.message}
+      </p>
+    </FancyBorder>
+  );
+}
+
+function WelcomeDialog() {
+  return (
+    <Dialog
+      title="Welcome"
+      message="Thank you for visiting our spacecraft!" />
+  );
+}
+
+///////////////////////////////////////////
+
+SPECIALIZATION AND COMPOSITION works equally well for components defined as classes:
+
+function Dialog(props) {
+  return (
+    <FancyBorder color="blue">
+      <h1 className="Dialog-title">
+        {props.title}
+      </h1>
+      <p className="Dialog-message">
+        {props.message}
+      </p>
+      {props.children}
+    </FancyBorder>
+  );
+}
+
+class SignUpDialog extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+    this.handleSignUp = this.handleSignUp.bind(this);
+    this.state = {login: ''};
+  }
+
+  render() {
+    return (
+      <Dialog title="Mars Exploration Program"
+              message="How should we refer to you?">
+        <input value={this.state.login}
+               onChange={this.handleChange} />
+        <button onClick={this.handleSignUp}>
+          Sign Me Up!
+        </button>
+      </Dialog>
+    );
+  }
+
+  handleChange(e) {
+    this.setState({login: e.target.value});
+  }
+
+  handleSignUp() {
+    alert(`Welcome aboard, ${this.state.login}!`);
+  }
+}
+
+
+/////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+
+Start with a mock. 
+
+Break The UI Into A Component Hierarchy 
+
+The first thing you'll want to do is to draw boxes around every component (and subcomponent) 
+
+in the mock and give them all names. If you're working with a designer, they may have already
+done this, so go talk to them! Their Photoshop layer names may end up being the names of 
+your React components!
+
+To break up components use single responsibility principle. 
+Since you're often displaying a JSON data model to a user, you'll find that if your model was 
+built correctly, your UI (and therefore your component structure) will map nicely. That's 
+because UI and data models tend to adhere to the same information architecture
+
+Now that we've identified the components in our mock, let's arrange them into a hierarchy. 
+This is easy. Components that appear within another component in the mock should 
+appear as a child in the hierarchy:
+
+FilterableProductTable
+SearchBar
+ProductTable
+ProductCategoryRow
+ProductRow
+
+Now that you have your component hierarchy, it's time to implement your app. 
+The easiest way is to build a version that takes your data model and renders the UI but 
+has no interactivity. It's best to decouple these processes because building a static version 
+requires a lot of typing and no thinking, and adding interactivity 
+requires a lot of thinking and not a lot of typing. 
+
+To build a static version of your app that renders your data model, you'll want to build 
+components that reuse other components and pass data using props. props are a way of passing data 
+from parent to child. If you're familiar with the concept of state, don't use state at all 
+to build this static version. State is reserved only for interactivity, that is, data that 
+changes over time. Since this is a static version of the app, you don't need it.
+
+
+At the end of this step, you'll have a library of reusable components that render your data model. 
+The components will only have render() methods since this is a static version of your app.
+The component at the top of the hierarchy 
+(FilterableProductTable) will take your data model as a prop.
+
+To build your app correctly, you first need to think of the minimal set of mutable state 
+that your app needs. The key here is DRY: Don't Repeat Yourself. Figure out the 
+absolute minimal representation of the state your application needs and 
+compute everything else you need on-demand.
+
+Is it passed in from a parent via props? If so, it probably isn't state.
+Does it remain unchanged over time? If so, it probably isn't state.
+Can you compute it based on any other state or props in your component? If so, it isn't state.
+
+OK, so we've identified what the minimal set of app state is. Next, 
+we need to identify which component mutates, or owns, this state.
+
+  For each piece of state in your application:
+
+  Identify every component that renders something based on that state.
+  Find a common owner component (a single component above all the 
+    components that need the state in the hierarchy).
+  Either the common owner or another component higher 
+    up in the hierarchy should own the state.
+  If you can't find a component where it makes sense to own the state, 
+    create a new component simply for holding the state and add it 
+    somewhere in the hierarchy above the common owner component.
+
+Final Step is to Add Inverse Data Flow:
+
+Let's think about what we want to happen. We want to make sure that whenever the user 
+changes the form, we update the state to reflect the user input. Since components 
+should only update their own state, FilterableProductTable will pass callbacks to 
+SearchBar that will fire whenever the state should be updated. We can use the onChange 
+event on the inputs to be notified of it. The callbacks passed by FilterableProductTable 
+will call setState(), and the app will be updated. FINAL CODE:
+
+class ProductCategoryRow extends React.Component {
+  render() {
+    return (<tr><th colSpan="2">{this.props.category}</th></tr>);
+  }
+}
+
+class ProductRow extends React.Component {
+  render() {
+    var name = this.props.product.stocked ?
+      this.props.product.name :
+      <span style={{color: 'red'}}>
+        {this.props.product.name}
+      </span>;
+    return (
+      <tr>
+        <td>{name}</td>
+        <td>{this.props.product.price}</td>
+      </tr>
+    );
+  }
+}
+
+class ProductTable extends React.Component {
+  render() {
+    var rows = [];
+    var lastCategory = null;
+    this.props.products.forEach((product) => {
+      if (product.name.indexOf(this.props.filterText) === -1 || 
+          (!product.stocked && this.props.inStockOnly)) {
+        return;
+      }
+      if (product.category !== lastCategory) {
+        rows.push(<ProductCategoryRow category={product.category} key={product.category} />);
+      }
+      rows.push(<ProductRow product={product} key={product.name} />);
+      lastCategory = product.category;
+    });
+    return (
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Price</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+    );
+  }
+}
+
+class SearchBar extends React.Component {
+  constructor(props) {
+    super(props);
+    this.handleChange = this.handleChange.bind(this);
+  }
+  
+  handleChange() {        //INVERSE DATA FLOW
+    this.props.onUserInput(
+      this.filterTextInput.value,
+      this.inStockOnlyInput.checked
+    );
+  }
+  
+  render() {
+    return (
+      <form>
+        <input
+          type="text"
+          placeholder="Search..."
+          value={this.props.filterText}
+          ref={(input) => this.filterTextInput = input}
+          onChange={this.handleChange}
+        />
+        <p>
+          <input
+            type="checkbox"
+            checked={this.props.inStockOnly}
+            ref={(input) => this.inStockOnlyInput = input}
+            onChange={this.handleChange}
+          />
+          {' '}
+          Only show products in stock
+        </p>
+      </form>
+    );
+  }
+}
+
+class FilterableProductTable extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      filterText: '',
+      inStockOnly: false
+    };
+    
+    this.handleUserInput = this.handleUserInput.bind(this);
+  }
+
+  handleUserInput(filterText, inStockOnly) {
+    this.setState({
+      filterText: filterText,
+      inStockOnly: inStockOnly
+    });
+  }
+
+  render() {
+    return (
+      <div>
+        <SearchBar
+          filterText={this.state.filterText}
+          inStockOnly={this.state.inStockOnly}
+          onUserInput={this.handleUserInput}
+        />
+        <ProductTable
+          products={this.props.products}
+          filterText={this.state.filterText}
+          inStockOnly={this.state.inStockOnly}
+        />
+      </div>
+    );
+  }
+}
+
+
+var PRODUCTS = [
+  {category: 'Sporting Goods', price: '$49.99', stocked: true, name: 'Football'},
+  {category: 'Sporting Goods', price: '$9.99', stocked: true, name: 'Baseball'},
+  {category: 'Sporting Goods', price: '$29.99', stocked: false, name: 'Basketball'},
+  {category: 'Electronics', price: '$99.99', stocked: true, name: 'iPod Touch'},
+  {category: 'Electronics', price: '$399.99', stocked: false, name: 'iPhone 5'},
+  {category: 'Electronics', price: '$199.99', stocked: true, name: 'Nexus 7'}
+];
+
+ReactDOM.render(
+  <FilterableProductTable products={PRODUCTS} />,
+  document.getElementById('container')
+);

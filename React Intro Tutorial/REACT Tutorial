@@ -1,0 +1,1146 @@
+REACT 
+
+ANgular, KNockout, Handle WEb components, COmponent Based UIs
+JSX => writing markup in javascript, 
+Virtual DOM => ur app is a function of props and state. Dont store anything in the DOM. Simply an 
+	       implementation detail. The dom reflects the current state of the data automatically.
+	       Leading to one of react's stances: HTML should be a projection of app state, not
+	       a source of truth. 
+
+Isomorphic Rendering
+Unidrection Data FLows through centralized dispatcher 
+
+REact Stances
+html should be a projection of app state, not a source of truth 
+javascript and html belong in the same file. 
+unidirectional flow. No two-way binding. Easier to reason about. 
+Inline styles can be good. INcrease code maintainability by avoiding the creation of 
+bloated style sheets that are very risky to change. 
+
+NODE JS uses CommonJS Pattern 
+//1. Get reference to dependency
+var dependency = require('/path/to/file');
+
+//2. Declare Module
+var MyModule = {
+//Code here...
+}
+
+3. Expose to others (other modules can reference this module using require statement)
+module.exports = MyModule; 
+
+React -> Componenet Library, packaging, composing, and rendering html componenets, make complex
+UIs by composing many components together. Can be used a long with other frameworks like angular and
+backbone. Utlizes virtual DOM which makes it very fast. When UI changes, React compares old state
+to new state in memory. Then updates DOM in least expensive way. React can render on both the cliet
+and the server. 
+
+React Router => Routing Library, simple nested approach to routing, and nested routes. 
+	        INspired by ember
+
+REact is used to build componenets, Fast and responsive, scale to large and complex UIS, 
+Composable, pass data down to child components using props (look and act like html attributes),
+easily pluggable. Use other libraries with it. 
+Isomorphic friendly - can be rendered on both the client and the server - universal javascript, 
+react does not need DOM to render, avoids repeating code on the client and the server, simple path to SEO
+Simple API, Battle Proven, 
+
+MVC => Model View Controller
+React does not dictate data flow, simplicity in component based development. Well composed react components
+fufill the rolls of both th V and the C in MVC.Create controllerViews and Views. ControllerViews promote reuse
+and seperation of concerns. REact avoid 2 way binding because unpredicatable => Cascading updates => tricky debugging
+React => all data flows in one direction
+
+React has JSX for markup, looks like HTML, nearly identical, HTML In javascript. 
+Difference: className instead of className	
+			htmlFor instead of for 
+JSX compiles down to JS, JSX is an abstraction over JS calls, JSX is tottaly optional. 
+JSX:
+
+"use strict"
+
+var React = require('react');
+
+var AboutPage = React.createClass({
+	render: function () {
+		return ( //In this function will be the JSX which looks like HTML, sitting in middle of js 
+			<div> 
+				<h1> About </h1>
+				<p>THis is a React and FLux demo project. </p>
+			</div>
+		);
+	}
+});
+
+module.exports = AboutPage; 
+
+Simple react component that displays AboutPage 
+
+JSX compiles down to JS
+JSX:
+<h1 color="red">Heading here</h1>
+THis line compiles down to:
+React.createElement("h1", {color: "red"}, "Heading here"); 
+//Nested markup will go in "Heading here" location, so more calls to React.createElement
+//MOre complicated Example:
+
+
+var createAuthorRow = function(author){
+	return (
+		<tr key={author.id}>
+			<td>{author.id}</td>
+			<td>{author.firstName} {author.lastName}</td>
+		</tr>
+	);
+};
+return (
+	<table className="table">
+		<thead>
+			<th>ID</th>
+			<th>Name</th>
+		</thead>
+		<tbody>
+			{this.props.authors.map(createAuthorRow)}
+		</tbody>
+	</table>
+);
+
+
+Compiles Down to: 
+
+var createAuthorRow = function(author){
+	return (
+		React.createElement("tr", {key: author.id},
+			React.createElement("td", null, author.id),
+			React.createElement("td", null, author.firstName, " ", author.lastName) 
+			)			
+	);
+};
+return (
+	React.createElement("table", {className: "table"},
+		React.createElement("thead", null, 
+			React.createElement("th", null, "ID"),
+			React.createElement("th", null, "Name")
+		),
+		React.createElement("tbody", null, 
+			this.props.authors.map(createAuthorRow)
+		)
+	)
+); 
+
+HTML in JS, doesnt that ignore seperation of concerns
+HTML in JS
+{users.map(createUserRow)}
+
+Typo, JSX tells you what line, unlike angular html typos. 
+JSX=> fail fast, and fail loudly, allows you to debug more easily. 
+
+VIRTUAL DOM
+MOst efficient: Compare current to desired so that you only change what has changed from 
+the two states, instead of remaking everything. 
+
+Update the DOM Is slow. React's virtual DOM determines most efficient way to update DOM. 
+Updating the DOM is expensive because you are redrawing a large section.
+React created abstaction over DOM called virtual DOM. 
+
+Without Virtual DOM -> Blindly update DOM using new state. 
+In contrast, React monitors the values of each component's state. 
+When a component's state changes, React compares the existing DOM 
+state to what the new DOM should look like. It then determines 
+the least expensive way to update the DOM. 
+This approach avoids layout thrashing, which is when a browser has to recalculate 
+the position of everything when a DOM element changes. Being efficient is increasingly 
+important in a world where more people are using mobile devices. Mobile devices vary 
+widely in their CPU power and conserving battery life is a concern as well. The good 
+news is, there's nothing extra that you have to do to enjoy the performance benefit of 
+the Virtual DOM. When you update the state of a component, it happens automatically. 
+The comparison happens in memory, so it's typically very fast. 
+
+Improve performance even more by declaring shouldComponentUpdate method on components. 
+In this method, you can tell React not to update the DOM at all even when certain
+data changes. => useful when you know the DOM  shoundnt change even though the data 
+just changed. And you can also consider using immutable data structures that cant be 
+changed. THis makes REact even faster. Immutable datastructures cant be changed, and instead
+a fresh copy is made when you need to change data. Makes react even faster cause you can do 
+reference comparisons. 
+
+REact also offers synthetic events, which abstract away browser specific event quirks, and allows
+React to optimize the performance of event handlers attached behind the scenes. This means in React, that you can, 
+for example, attach event handlers to each row in a table. React will intelligently attach the 
+event handler at the highest level, for efficiency. The Virtual DOM also allows React to render 
+on the server, where no DOM exists at all, and because the DOM is abstracted away, React can 
+even be used for implementing components in native applications using React Native. 
+For the second time, we won't explore Isomorphic rendering and React Native in this course. 
+Those are both large topics that warrant their own courses. But the bottom line is, Virtual 
+DOM doesn't just buy us performance, it buys us the flexibility to do these other innovative approaches.
+
+
+
+PureRenderMixin + immutablility => immutable data structures to make React even faster. 
+
+DOM merely representation of current state.
+
+First React COmponent: 
+
+Make folder in src called components
+Add js file called homePage.js
+
+/components/homePage.js
+
+"use strict";
+
+var React = require('react')';
+
+//React.createClass allows us to define a class which contains our component 
+//And the one function we need to define our React component is render.
+//render Required on any react component
+//render function is where you put JSX. Whatever function returns is what is
+//   displayed to the screen
+
+//in the html, to specify a class, had to use className instead of class because class
+// is reserverd word in js
+//Then export component so it can be used elswhere. 
+
+var Home = React.createClass({  
+	render: function() {
+		return (<div className="jumbotron"> 
+			<h1>Pluralsign Administration</h1>
+			<p>I like to fart</p>
+		</div>
+		);
+	}
+});
+
+module.exports = Home; //Used the same name as the name of the component. 
+
+///////////////////////////////////////////////////main.js file
+//THis is really the bootstrap of our application, our entry point 
+//We need to render application at the div with the id="app"
+//oR whatever we specifiy we render react to. 
+//Our app will be placed in div with id="app"
+
+
+
+$ = jQuery = require('jquery');
+var React = require('react');
+var Home = require('./components/homePage');
+
+//var App = console.log('Hello world from Browserify');
+//module.exports = App;
+
+//React.render takes 2 parameters
+//FIrst is the component we woudl like to render. 
+//Which in this case is Home and we can pass it JSX
+//as that first parameter
+//Second parameter is DOM element that I'd like to attach my application to
+
+
+React.render(<Home />, document.getElementById('app'));
+
+
+
+
+
+///////////////////////////////////////////index.html
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Pluralsight Administration</title>
+    <link rel="stylesheet" href="css/bundle.css" />
+  </head>
+  <body>
+    <div id="app"></div>
+    <script src="scripts/bundle.js"></script>
+  </body>
+</html>
+/////////////////////////////////////////////////
+Lets make a second component
+src/components/about/aboutPage.js
+
+"use strict"
+
+var React = require('react');
+
+var About = React.createClass({
+	render: function() {
+		return (
+			<div>
+				<h1>About</h1>
+				<p>
+					This application uses the follow technologies:
+					<ul>
+						<li>React</li>
+						<li>React Router</li>
+						<li>Flux</li>
+					</ul>
+				</p>
+			</div>
+		);
+	}
+});
+
+module.exports = About;
+
+
+How do you route between this and the other component.
+Lets try to do this without using third party react router module
+
+///////////////main.js file
+
+//Since we want to put "use strict" but dont want to hurt jQuery, as a global variable,
+//wrap everything in IIFE
+
+$ = jQuery = require('jquery');
+var React = require('react');
+var Home = require('./components/homePage');
+var About = require('./components/about/aboutPage');
+
+(function(win) {
+"use strict";
+//Make new react component right here called App
+//COde looks at route, then loads either component
+var App = React.createClass({
+	render: function(){
+		var Child; //variable that keeps track of what child we want to render
+		switch(this.props.route) { //depends on what url looks like, looks at route for app.
+			case 'about': Child = About; break;
+			default: Child = Home;
+		}
+
+		//Return the markup
+		return (
+			<div>
+				<Child />
+			</div>
+		);
+
+	}
+});
+
+//Lets add an event listener, hashchange, which is the event that occurs when there is hash 
+//change in the URL. then we call callback.
+
+function render() {
+	var route = win.location.hash.substr(1); //Get the route by taking a piece of the url.
+	React.render(<App route={route} />, document.getElementById('app'));
+	//Pass App, route as a property 
+}
+
+
+win.addEventListener('hashchange', render); //We watch for hashchange in the url 
+											   //then it calls render. 
+render(); //Calling it here to render the screen initially. 
+
+} (window));
+////Routes:
+
+http://localhost:9005/#about => THis now routes to about page, anything else routes to home using hash style url 
+
+THis is a simple ad-hoc way of routing. 
+
+btw, we do not have "use strict" at the top because we have some global variables that we need
+to define like jQuery here within main.js. 
+
+////////////////////////USE STRICT DISCUSSION///////////
+Strict mode makes it easier to write "secure" JavaScript.
+
+Strict mode changes previously accepted "bad syntax" into real errors.
+
+As an example, in normal JavaScript, mistyping a 
+variable name creates a new global variable. 
+In strict mode, this will throw an error, making it impossible 
+to accidentally creat a global variable.
+In normal JavaScript, a developer will not receive any error 
+feedback assigning values to non-writable properties.
+In strict mode, any assignment to a non-writable property, 
+a getter-only property, a non-existing property,
+ a non-existing variable, or a non-existing object, will throw an error.
+ Using a variable, without declaring it, is not allowed:
+
+"use strict";
+x = 3.14;                // This will cause an error
+
+Objects are variables too.
+
+Using an object, without declaring it, is not allowed:
+
+"use strict";
+x = {p1:10, p2:20};      // This will cause an error
+
+Deleting a variable (or object) is not allowed.
+
+"use strict";
+var x = 3.14;
+delete x;                // This will cause an error
+
+Deleting a function is not allowed.
+
+"use strict";
+function x(p1, p2) {}; 
+delete x;                // This will cause an error 
+
+Duplicating a parameter name is not allowed:
+
+"use strict";
+function x(p1, p1) {};   // This will cause an error
+
+Octal numeric literals are not allowed:
+
+"use strict";
+var x = 010;             // This will cause an error
+
+Escape characters are not allowed:
+
+"use strict";
+var x = \010;            // This will cause an error
+
+Writing to a read-only property is not allowed:
+
+"use strict";
+var obj = {};
+Object.defineProperty(obj, "x", {value:0, writable:false});
+
+obj.x = 3.14;            // This will cause an error
+
+Writing to a get-only property is not allowed:
+
+"use strict";
+var obj = {get x() {return 0} };
+
+obj.x = 3.14;            // This will cause an error
+Try it Yourself »
+
+Deleting an undeletable property is not allowed:
+
+"use strict";
+delete Object.prototype; // This will cause an error
+
+The string "eval" cannot be used as a variable:
+
+"use strict";
+var eval = 3.14;         // This will cause an error
+
+The string "arguments" cannot be used as a variable:
+
+"use strict";
+var arguments = 3.14;    // This will cause an error
+
+The with statement is not allowed:
+
+"use strict";
+with (Math){x = cos(2)}; // This will cause an error
+
+For security reasons, eval() is not allowed to create variables in the scope from which it was called:
+"use strict";
+eval ("var x = 2");
+alert (x);               // This will cause an error
+
+In function calls like f(), the this value was the global object. In strict mode, it is now undefined.
+
+Future reserved keywords are not allowed in strict mode. These are:
+
+implements
+interface
+let
+package
+private
+protected
+public
+static
+yield
+"use strict";
+var public = 1500;      // This will cause an error
+
+
+/////////
+"use strict";
+myFunction();
+
+function myFunction() {
+    y = 3.14;   // This will also cause an error because y is not declared
+}
+/////////////
+
+x = 3.14;       // This will not cause an error. 
+myFunction();
+
+function myFunction() {
+   "use strict";
+    y = 3.14;   // This will cause an error
+}
+
+///////////////////////////////////////////////////////////////////
+
+Now we want a centralized header, links to navigate between pages. 
+NEw folder, called common, for common components used in application. 
+
+
+src/common/header.js
+
+"use strict"
+
+var React = require('react');
+
+var Header = React.createClass({
+	render: function(){
+		return (
+			<nav className="navbar navbar-default">
+				<div className="container-fluid">
+					<a href="/" className="navbar-brand">
+						<img src="images/pluralsight-logo.png" />
+					</a>
+					<ul className="nav navbar-nav">
+						<li><a href="/">Home</a></li>
+						<li><a href="/#about">About</a></li>
+					</ul>
+				</div>
+			</nav>
+		);
+	}
+});
+
+module.exports = Header;
+
+////////////////////////////////NOw we need to put header in main.js
+main.js
+
+$ = jQuery = require('jquery');
+var React = require('react');
+var Home = require('./components/homePage');
+var About = require('./components/about/aboutPage');
+var Header = require('./components/common/header');
+(function(win) {
+    "use strict";
+var App = React.createClass({
+	render: function(){
+		var Child; //variable that keeps track of what child we want to render
+		switch(this.props.route) { //depends on what url looks like, looks at route for app.
+			case 'about': Child = About; break;
+			default: Child = Home;
+		}
+
+		//Return the markup
+		return (
+			<div>
+				<Header/> //Add Header to markup. 
+				<Child />
+			</div>
+		);
+
+	}
+});
+
+function render() {
+	var route = win.location.hash.substr(1); //Get the route by taking a piece of the url.
+	React.render(<App route={route} />, document.getElementById('app'));
+	//Pass App, route as a property 
+}
+
+win.addEventListener('hashchange', render); //We watch for hashchange, then it calls render. 
+render(); //Calling it here to render the screen initially. 
+
+}(window));
+
+//Broken image, so jump over to gulp and create a task that will move our images from the 
+source directory over to the disk directory. 
+
+//Naming React files
+like to put in folder called components
+Now lets say i made a component called ChatApp. Facebook would call that file
+ChatApp.react.js
+SOme ppl like to use jsx extension => ChatApp.jsx
+or user camel case => chatApp.js
+
+/////////////////////////////////////////////////////////////////////////////////////////
+PROPS STATE, COMPONENT LIFECYCLE MODULE START///////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////
+
+More dynamic components. Props, State, Dynamic Child components, Lifecycle components
+
+ Props allow you to pass data down to child components. For example, if I had a 
+ component that displayed a username, a parent component could pass down a username prop. 
+ Props are immutable. Since they're passed down by the parent, they're effectively owned by the 
+ parent. 
+ 
+ State, in contrast, is mutable. And since state is mutable, you should strive to only utilize 
+ state on your controller views. In other words, only use state on the top level component. 
+ Pass data down to your child components via props. 
+ 
+ You can optionally define a getInitialState function. In this function, you can set the 
+ initial state for your component. This should typically only be done in your top level component, 
+ also known as your controller view. 
+ 
+ You can also define default values for properties on your 
+ component using the getDefaultProps method. Inside this method, you can return a set of properties 
+ that your component should use by default if the parent component doesn't declare a value.
+
+
+Props - Look like HTML attributes, but immutable
+		this.props.username
+
+	
+State - Holds mutable state
+	this.state.username
+
+
+ Each React component has a lifecycle. So there's a list of 
+ functions that allow you to hook into various parts 
+ of the component's lifecycle. Since React was built from the 
+ ground up to be rendered on both the client and the server, 
+ also known as isomorphically or universally, some of these functions 
+ run on both the client and the server, while some of them 
+ run only on the client. 
+ 
+ componentWillMount - Before inital render, both client and server 
+ runs immediately before initial rendering. So this function's 
+ a great spot to set your component's initial state. 
+ 
+ componentDidMount - After Render, Acccess DOM, integrate with
+  other frameworkds, set timers, make ajax calls
+ runs immediately after render. By the time this function's 
+ called, the component's DOM exists. So this is a handy spot for 
+ integrating with other frameworks such as third party component 
+ libraries. This is also a good spot set times and 
+ make AJAX requests since you now know the component is 
+ rendered in the DOM. 
+ 
+ componentWillReceiveProps - When recieving new props. Not called on inital render. Set state before a render. 
+ runs when the component is receiving new properties. In other words, when properties have changed. This is a place to 
+ set state before the next render since this runs just before the new properties are received. 
+ 
+ shouldComponentUpdate - Before render when new props or state are being recieved. NOt called on initial render. 
+ 					   -Performanc.e REturn false to void unnecessary rerenders.
+ runs immediately before render and when new props or state are being received by your component. The big reason this 
+ function is useful is for performance. Why? Well, sometimes props and/or state changes, but the components doesn't 
+ actually need to re-render because the data change doesn't affect the DOM. When this is the case, you can return 
+ false from this function to avoid an unnecessary render call. 
+ 
+ componentWillUpdate - Immeiditely before rendering when new props or state are being recieved. 
+ 					   Not called on initial render. Prepare for an update. 
+ runs immediately before rendering when new props or state are being received. This function is a useful place to
+  prepare for an update. But take note that you can't call set state in this function. 
+  
+  componentDidUpdate - After components updates are flushed to the DOM. Not called on initial render. 
+  					   WOrk with DOM after update. 
+  is evoked immediately after the component's updates are flushed to the DOM. So this function allows you to 
+  operate on the DOM immediately after the component has been updated and re-rendered in the DOM. 
+  
+  componentWillUnmount - immmedietly before component  is removed from the DOM for cleanup 
+  This function runs just before component is unmounted from the DOM. So this is a great place to clean 
+  up by destroying any related resources or DOM elements that were created when the component was mounted.
+
+/////////////////////////KEYS FOR DYNAMIC CHILDREN.
+Also, keep in mind, when you're creating multiple child components dynamically, you need to provide a key for 
+each child component. As children are added and removed, React uses this key to assure that child components 
+are properly reordered or destroyed. So in this example, I'm using the author's ID field as the key. 
+This is often the primary key for the corresponding database record, but it need not be. You just 
+need to declare a unique ID for each specific record.
+
+<tr key={author.id}> 
+
+
+/////MOCK WEB API TO///////////////////////////////////////////////////////////////
+//centralized point where we make all our ajax calls within our application 
+
+api folder. 
+/api/authorApi.js
+
+"use strict";
+
+//This file is mocking a web API by hitting hard coded data.
+var authors = require('./authorData').authors;
+var _ = require('lodash');
+
+//This would be performed on the server in a real app. Just stubbing in.
+var _generateId = function(author) {
+	return author.firstName.toLowerCase() + '-' + author.lastName.toLowerCase();
+};
+
+var _clone = function(item) {
+	return JSON.parse(JSON.stringify(item)); 
+	//return cloned copy so that the item is passed by value instead of by reference
+};
+
+var AuthorApi = {
+	getAllAuthors: function() {
+		return _clone(authors); 
+	},
+
+	getAuthorById: function(id) {
+		var author = _.find(authors, {id: id});
+		return _clone(author);
+	},
+	
+	saveAuthor: function(author) {
+		//pretend an ajax call to web api is made here
+		console.log('Pretend this just saved the author to the DB via AJAX call...');
+		
+		if (author.id) {
+			var existingAuthorIndex = _.indexOf(authors, _.find(authors, {id: author.id})); 
+			authors.splice(existingAuthorIndex, 1, author);
+		} else {
+			//Just simulating creation here.
+			//The server would generate ids for new authors in a real app.
+			//Cloning so copy returned is passed by value rather than by reference.
+			author.id = _generateId(author);
+			authors.push(author);
+		}
+
+		return _clone(author);
+	},
+
+	deleteAuthor: function(id) {
+		console.log('Pretend this just deleted the author from the DB via an AJAX call...');
+		_.remove(authors, { id: id});
+	}
+};
+
+module.exports = AuthorApi;
+
+/api/authuorData
+
+module.exports = {
+	authors:[
+		{
+			id: 'cory-house',
+			firstName: 'Cory',
+			lastName: 'House'
+		},
+		{
+			id: 'scott-allen',
+			firstName: 'Scott',
+			lastName: 'Allen'
+		},
+			{
+			id: 'dan-wahlin',
+			firstName: 'Dan',
+			lastName: 'Wahlin'
+		}
+	]
+
+
+}
+
+########################################################################################
+Create new folder called authors in components
+
+/authors/authorPage.js
+
+"use strict"
+
+var React = require('react');
+var AuthorApi = require('../../api/authorApi');
+
+var Authors = React.createClass({
+	//Use getInitialState lifecycle method to define some initial state for this component 
+	//initial state we need is authors in case there arent any authors 
+	getInitialState: function(){
+		return {
+			authors: []
+		};
+	},
+
+	//Gets data from api in different lifecycle component. 
+	//to set state we need to called the function setState
+	//pass the setter new state we'd like to use 
+	//YOU'LL Have to use promises or callbacks or observables for real apis
+	componentWillMount: function(){
+		this.setState({authors: AuthorApi.getAllAuthors() });
+	}, 
+
+	render: function() {
+
+		var createAuthorRow = function(author){
+			return (
+				<tr key={author.id}> {
+					/* Each table row is going to
+				 need a key because when we create multiple 
+				 instances of a given element using React components, 
+				 React needs a key so that it can keep track of these
+				  different elements. And for instance, as we 
+				  remove elements and we add elements, this allows
+				   React to maintain proper state for this to also
+				    make sure that the ordering of these elements 
+					doesn't get destroyed as we re-render the application. 
+										*/}
+					<td><a href={"/#authors/" + author.id}> {author.id} </td>
+					<td>{author.firstName} {author.lastName}</td>
+					{/*The space between firstname and lastname for author in td
+					   will be rendered which is nice thing about jsx
+					*/}
+				</tr> 
+			)
+		};
+
+
+		return (
+			<div> 
+			
+			//React only has single top level component so we 
+			//use div to wrap top level componenet 
+			
+				<h1>Authors</h1>
+				<table className="table"> {/* the className is for setting the bootstrap 
+											   for a table */}
+					<thead>
+						<th>ID</th>
+						<th>Name</th>
+					</thead>
+					<tbody> {/*We can call another function bc we want to iterate 
+							   through a list of items
+							   We want the state for this particular component
+							   Now we havent defined this on state yet so we'll
+							   do that 
+							   Call createAuthorRow and pass it a reference to this
+							   so the function knows the context of where its being 
+							   executed.
+
+							   .map method =>
+
+								var numbers = [1, 4, 9];
+								var roots = numbers.map(Math.sqrt);
+								var new_array = arr.map(callback[, thisArg])
+
+								callback : Function that produces an element of the new Array, 
+										   taking three arguments:
+								currentValue: The current element being processed in the array.
+								index: The index of the current element being processed in the array.
+								array: The array map was called upon.
+								thisArg : Optional. Value to use as this when executing callback.
+
+							   */}
+						{this.state.authors.map(createAuthorRow,this)}
+					</tbody>
+				</table>
+			</div>
+		)
+	}
+})
+
+module.exports = Authors; 
+
+Navigation: Add Reference to main so we can navigate to it. 
+
+
+
+main.js
+
+$ = jQuery = require('jquery');
+var React = require('react');
+var Home = require('./components/homePage');
+var Authors = require('./components/authors/authorPage'); #Added this line
+var About = require('./components/about/aboutPage');
+var Header = require('./components/common/header');
+(function(win) {
+    "use strict";
+var App = React.createClass({
+	render: function(){
+		var Child; //variable that keeps track of what child we want to render
+		switch(this.props.route) { //depends on what url looks like, looks at route for app.
+			case 'about': Child = About; break;
+			case 'authors': Child = Authours; break;
+			default: Child = Home;
+		}
+
+		//Return the markup
+		return (
+			<div>
+				<Header/> //Add Header to markup. 
+				<Child />
+			</div>
+		);
+
+	}
+});
+
+function render() {
+	var route = win.location.hash.substr(1); 
+	//Get the route by taking a piece of the url.
+
+	React.render(<App route={route} />, document.getElementById('app'));
+	//Pass App, route as a property 
+}
+
+Now add link in header file: 
+
+src/common/header.js
+
+"use strict"
+
+var React = require('react');
+
+var Header = React.createClass({
+	render: function(){
+		return (
+			<nav className="navbar navbar-default">
+				<div className="container-fluid">
+					<a href="/" className="navbar-brand">
+						<img src="images/pluralsight-logo.png" />
+					</a>
+					<ul className="nav navbar-nav">
+						<li><a href="/">Home</a></li>
+						<li><a href="/#authors">Authors</a></li>
+						<li><a href="/#about">About</a></li>
+					</ul>
+				</div>
+			</nav>
+		);
+	}
+});
+
+module.exports = Header;
+
+
+
+
+Now lets talk about composition, controller views, props, mixins
+
+React makes it trivial to compose components together, fundamental to the way React scales
+and the simplicity of composing them is Reacts greatest strength. Like compose these as such:
+
+Also, there's an important concept of ownership at play here. 
+The avatar component owns the profile pic and profile link 
+components that you see here. By ownership, I mean the 
+avatar component is setting the props for these components. 
+Since a component can't mutate it's properties, they remain 
+set to whatever value the owner sets them to. This leads us 
+to the concept of controller views. To clarify, a controller view 
+is simply a React component that has child components. At first, 
+I found this jargon confusing. Why am I using the term "controller view"
+ here instead of just calling it a React component? Well, controller views 
+ are a name for the top level React component. A React controller view controls data 
+ flows for all of its child components. It does this by setting props on 
+ child components. As you'll see in the flux module, controller views interact 
+ with flux stores as well. Don't let the name "controller view" confuse you.
+  It's simply the top-level component on the page. You can nest components 
+  as deeply as you'd like, but it's recommended to have a single top-level 
+  controller view that interacts with the store, and passes all necessary 
+  data down to the children. Oh, and a quick note: it's possible to nest 
+  your controller views, but it's not recommended to do so, since it can 
+  cause multiple data updates. It can also cause React's render method to 
+  get called multiple times. Let's put this knowledge to use by refactoring 
+  the author page component into a true controller view. We'll delegate the 
+  markup down to a child component.
+
+var Avatar = React.createClass({
+	render: function () {
+		return  (
+			<div>
+				<ProfilePic username={this.props.username} />
+				<ProfileLink username={this.props.username} />
+			</div>
+		);
+	}
+});
+
+var ProfilePic = React.createClass({
+	render: function(){
+		return (
+			<img src={'http://graph.facebook.com/' + this.props.username + '/picture'}
+		);
+	}
+});
+
+var ProfileLink = React.createClass({
+	render: function(){
+		return(
+			<a href={'http://www.facebook.com/ + this.props.username}>
+				{this.props.username}
+			</a>
+		);
+	}
+});
+
+
+
+React.render(
+	<Avatar username="pwh" />
+	document.getElementById('example')
+);
+
+////////////////////////////////////////////////////////////
+LEts create a new child component called authorsList which will take the markup defined in author
+Author shouldnt handle both state and markup so thats why we are refactoring. 
+
+/authors/authorList.js
+
+"use strict";
+
+var React = require('react');
+var AuthorList = React.createClass({
+
+	render: function() {
+
+			var createAuthorRow = function(author){
+			return (
+        		<tr key={author.id}> 
+	        		<td><a href={"/#authors/" + author.id}> {author.id} </a> </td>
+		        	<td>{author.firstName} {author.lastName}</td>
+				</tr> 
+			)
+		};
+
+		return (
+			<div> 		
+				<table className="table"> 
+					<thead>
+						<th>ID</th>
+						<th>Name</th>
+					</thead>
+					<tbody>
+						{/*Now it will be recieivng its data via props*/}
+						{this.props.authors.map(createAuthorRow,this)}
+					</tbody>
+				</table>
+			</div>
+		);
+	}
+});
+
+module.exports = AuthorList;
+
+
+/authors/authorPage.js - RENAMED THE CLASS TO AUTHORPAGE
+                                                                  
+
+"use strict"
+
+var React = require('react');
+var AuthorApi = require('../../api/authorApi');
+var AuthorList = require('./authorList');
+
+
+var AuthorPage = React.createClass({
+	getInitialState: function(){
+		return {
+			authors: []
+		};
+	},
+
+	//Logically the setting of component state should happen at component didmount
+	//instead of component willmount so change that as well. 
+	//ALso check if the component is mounted in this function. so write if statement 
+	componentDidMount: function(){
+		if(this.isMounted()){
+			this.setState({authors: AuthorApi.getAllAuthors() });
+		}
+	}, 
+
+	render: function() {
+
+		return (
+			<div> 
+				<h1>Authors</h1>
+				<AuthorList authors={this.state.authors} />
+			</div>
+		);
+	}
+})
+
+module.exports = AuthorPage;
+
+
+//What would be awesome is that authorList needs the prop authors to be passed
+but we should validate this!
+
+Prop Validation
+Prop types are a great way to be explicit about the data that you expect 
+to see in your component's properties. You can specify that certain properties 
+are required, and also specify the data types for each prop, such as a number, string, 
+or bool. Prop types are simply a map that lets you specify a validation function for 
+each property. When validation fails, a warning is logged in your console. 
+This is an example of a prop type that we're going to set up to validate that the 
+expected properties are being passed to our author form component.
+
+propTypes : {
+	author: React.PropTypes.object.isRequired,  //We are requiring an author object
+	onSave: React.PropTypes.func.isRequired,  //Requiring a funct that should be called when user saves
+	validate: React.PropTypes.func.isRequired, //Requiring func that is called to validate input
+	errors: REact.PropTypes.object, //Declaring that any errors passed into our form should be of type object
+	hasErrors: React.PropTypes.func.isRequired, //requiring func that determines if any errors have occured
+},
+
+You can add these types of validations: 
+FOr performance PropTypes only run in the development version of React. 
+
+Prop Validation isn't run in the production (minified) version of REACT. 
+Think of this more as a way to document your expectation and catch issues during development, 
+than as a way to enforce these rules in production. Also remember: every prop type 
+that isn't required should have a corresponding field in get default props. 
+I just mention development versus production modes, so I'd better clarify this. 
+Prop validation, as I said, only runs in development mode, so you can't rely on 
+prop validation in production. To clarify, the minified version of React runs in 
+production mode by default, so be sure that you deploy the appropriate version of 
+React to each environment.
+
+
+optionalArray: React.PropTypes.array,
+optionalBool: React.PropTypes.bool,
+optionalFunc: React.PropTypes.func,
+optionalNumber: React.PropTypes.number,
+optionalObject: React.PropTypes.object,
+optionalStringL React.PropTypes.string,
+
+
+
+authorPage is controller View and authorList is in it. 
+LEts define some propTypes so that you know what properties this component takes
+
+/authors/authorList.js
+
+"use strict";
+
+var React = require('react');
+var AuthorList = React.createClass({
+	 //Saying that authors array is required
+	 //if its not passed in, we will be notified.
+	propTypes: {
+		authors: React.PropTypes.array.isRequired
+	},
+
+	render: function() {
+
+			var createAuthorRow = function(author){
+			return (
+        		<tr key={author.id}> 
+	        		<td><a href={"/#authors/" + author.id}> {author.id} </a> </td>
+		        	<td>{author.firstName} {author.lastName}</td>
+				</tr> 
+			)
+		};
+
+		return (
+			<div> 		
+				<table className="table"> 
+					<thead>
+						<th>ID</th>
+						<th>Name</th>
+					</thead>
+					<tbody>
+						{/*Now it will be recieivng its data via props*/}
+						{this.props.authors.map(createAuthorRow,this)}
+					</tbody>
+				</table>
+			</div>
+		);
+	}
+});
+
+module.exports = AuthorList;
+
+Mixins handy way of handling cross cutting functionality
+For cross cutting concerns
+Share code between multiple components
+
+Declare them by setting the Mixins property in your react component and then 
+populating that property with an array of Mixins like this:
+
+
+var ManageAuthorPage = React.createClass({
+
+	mixins: [Router.Navigation,
+			 Router.State,
+			],
+   ..
+})

@@ -1,0 +1,673 @@
+Some notes on thi sproject. Here is how routing is set up. 
+
+//////index.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>React Container Components Example</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+
+<div id="root"></div>
+<script src="/js/bundle.js"></script>
+
+</body>
+</html>
+
+///////////////////app/app.js
+
+import React from 'react';
+import ReactDOM from 'react-dom';
+require('es6-promise').polyfill();
+
+// Notice that we've organized all of our routes into a separate file.
+import Router from './router';
+
+// Now we can attach the router to the 'root' element like this:
+ReactDOM.render(Router, document.getElementById('root'));
+
+
+
+//////////////app/router.js
+
+import React from 'react';
+import { Router, Route, browserHistory, IndexRoute } from 'react-router';
+
+// Layouts
+import MainLayout from './components/layouts/main-layout';
+import SearchLayout from './components/layouts/search-layout';
+
+// Pages
+import Home from './components/home';
+import UserListContainer from './components/containers/user-list-container';
+import UserProfileContainer from './components/containers/user-profile-container';
+import WidgetListContainer from './components/containers/widget-list-container';
+
+export default (
+  <Router history={browserHistory}>
+    <Route component={MainLayout}>
+      <Route path="/" component={Home} />
+
+        <Route path="users">
+          <Route component={SearchLayout}>
+            <IndexRoute component={UserListContainer} />
+          </Route>
+          <Route path=":userId" component={UserProfileContainer} />
+        </Route>
+
+        <Route path="widgets">
+          <Route component={SearchLayout}>
+            <IndexRoute component={WidgetListContainer} />
+          </Route>
+        </Route>
+
+    </Route>
+  </Router>
+);
+
+/////////////////////////////app/components/home.js
+
+import React from 'react';
+
+const Home = React.createClass({
+  render: function() {
+    return (
+      <div className="home-page">
+        <h1>The app now has Container Components</h1>
+        <p>
+        ...
+        </p>
+        <p>
+         ...
+        </p>
+      </div>
+    );
+  }
+});
+
+export default Home;
+
+
+
+//////////////////////////////app/components/layouts/main-layout.js
+
+import React from 'react';
+import { Link } from 'react-router';
+
+// Using "Stateless Functional Components"
+export default function(props) {
+  return (
+    <div className="app">
+      <header className="primary-header"></header>
+      <aside className="primary-aside">
+        <ul>
+          <li><Link to="/" activeClassName="active">Home</Link></li>
+          <li><Link to="/users" activeClassName="active">Users</Link></li>
+          <li><Link to="/widgets" activeClassName="active">Widgets</Link></li>
+        </ul>
+      </aside>
+      <main>
+        {props.children}
+      </main>
+    </div>
+    );
+}
+
+
+You've probably noticed by now that JSX follows XML rules in the sense 
+that the Route component can either be written as one tag: <Route /> 
+or two: <Route>...</Route>. This is true of all JSX including your 
+custom components and normal DOM nodes. For instance, <div /> is
+ valid JSX and will convert to <div></div> when rendered.
+
+ /////////////////////////////app/components/layouts/search-layout.js
+
+import React from 'react';
+
+// Using "Stateless Functional Components"
+export default function(props) {
+  return (
+    <div className="search">
+      <header className="search-header">
+        [Search Title]
+      </header>
+      <div className="search-results">
+        {props.children}
+      </div>
+      <footer className="search-footer">
+        [Total Results]
+      </footer>
+    </div>
+    );
+}
+
+//////////////////////////////////////////////////////////////////////
+
+
+Fetching data with AJAX
+
+// This is an example of tightly coupled view and data which we do not recommend
+
+var UserList = React.createClass({
+  getInitialState: function() {
+    return {
+      users: []
+    }
+  },
+
+  componentDidMount: function() {
+    var _this = this;
+    $.get('/path/to/user-api').then(function(response) {
+      _this.setState({users: response})
+    });
+  },
+
+  render: function() {
+    return (
+      <ul className="user-list">
+        {this.state.users.map(function(user) {
+          return (
+            <li key={user.id}>
+              <Link to="{'/users/' + user.id}">{user.name}</Link>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
+});
+
+To be clear, there’s nothing wrong with using getInitialState to initialize component
+ state, and there’s nothing wrong with conducting an Ajax request from componentDidMount 
+ (although we should probably abstract the actual call out to other functions). The 
+ problem is that we’re doing these things together in the same component where the 
+ view is stored. This tight-coupling makes the application more rigid and WET.
+
+ The second problem is that we’re using jQuery for the Ajax call. Sure, jQuery 
+ has many nice features, but most of them deal with DOM rendering and React has 
+ its own way of doing this. As for jQuery’s non-DOM features like Ajax, chances 
+ are you can find lots of alternatives that are more single-feature focused.
+
+ One of those alternatives is Axios, a promise-based Ajax tool that’s very 
+ similar (in terms of API) to jQuery’s promise-based Ajax features. 
+ How similar are they?
+
+// jQuery
+$.get('/path/to/user-api').then(function(response) { ... });
+
+// Axios
+axios.get('/path/to/user-api').then(function(response) { ... });
+
+//Here are the apis this project uses to make requests?
+
+////////////////////////////////app/api/widget-api.js
+
+import axios from 'axios';
+
+/**
+ * Get widgets
+ */
+
+export function getWidgets() {
+  return axios.get('http://localhost:3001/widgets')
+    .then(response => response.data);
+}
+
+/**
+ * Delete a widget
+ */
+
+export function deleteWidget(widgetId) {
+  return axios.delete('http://localhost:3001/widgets/' + widgetId);
+}
+
+//////////////////////////app/api/user-api.js
+
+import axios from 'axios';
+
+/**
+ * Get users
+ */
+
+export function getUsers() {
+  return axios.get('http://localhost:3001/users')
+    .then(response => response.data);
+}
+
+/**
+ * Delete a user
+ */
+
+export function deleteUser(userId) {
+  return axios.delete('http://localhost:3001/users/' + userId);
+}
+
+/**
+ * getProfile() is much more complex because it has to make
+ * three XHR requests to get all the profile info.
+ */
+
+export function getProfile(userId) {
+
+  // Start with an empty profile object and build it up
+  // from multiple XHR requests.
+  let profile = {};
+
+  // Get the user data from our local database.
+  return axios.get('http://localhost:3001/users/' + userId)
+    .then(response => {
+
+      let user = response.data;
+      profile.name = user.name;
+      profile.twitter = user.twitter;
+      profile.worksOn = user.worksOn;
+
+      // Then use the github attribute from the previous request to
+      // sent two XHR requests to GitHub's API. The first for their
+      // general user info, and the second for their repos.
+      return Promise.all([
+        axios.get('https://api.github.com/users/' + user.github),
+        axios.get('https://api.github.com/users/' + user.github + '/repos')
+      ]).then(results => {
+
+        let githubProfile = results[0].data;
+        let githubRepos = results[1].data;
+
+        profile.imageUrl = githubProfile.avatar_url;
+        profile.repos = githubRepos;
+
+        return profile;
+
+      });
+
+    });
+
+}
+
+//////////////////////////////////////////////////////////////////////////
+
+In short, Container Components source the data and deal with state. 
+State is then passed to Presentational Components as props and is 
+then rendered into views.
+
+Presentational Components should never change the prop data itself. 
+In fact, any component that receives props should consider that data 
+immutable and owned by the parent. While the Presentational Component 
+shouldn’t change the meaningfulness of the data in the prop, it can
+ format the data for the view (such as turning a Unix timestamp into 
+ a something more human readable).
+
+
+ In React, events are attached directly to the view with attributes like onClick. 
+ However, one might wonder how events work since Presentational Components aren’t
+  supposed to change the props. For that, we have a whole section on events below.
+
+COmpare these two:
+1.
+
+var UserListContainer = React.createClass({
+ ...
+  componentDidMount: function() {
+    var _this = this;
+    axios.get('/path/to/user-api').then(function(response) {
+      _this.setState({users: response.data})
+    });
+  },
+...
+});
+
+2.
+
+const UserListContainer = React.createClass({
+...
+
+  componentDidMount: function() {
+    userApi.getUsers().then(users => {
+      this.setState({users: users})
+    });
+  },
+
+ ...
+});
+
+A quick note on ES6 Arrow Functions: You may notice the classic var _this = this 
+trick needed for the example above. ES6 Arrow functions, besides having shorter 
+syntax, have other benefits which alleviate the need for this trick. 
+
+//////////////////////////////////////////////////////////////
+Events:
+
+So far, we’ve shown how state can be passed from Container to Presentational
+ Components, but what about behavior? Events fall into the category of 
+ behavior and they oftentimes need to mutate data. Events in React are
+  attached at the view level. For separation of concerns, this can cause a 
+  problem in our Presentational Components if we create event functions where the view is. To 
+  elaborate, let’s start by adding an event to our Presentational Component 
+(a <button> you can click) directly to identify problems:
+
+var UserList = React.createClass({
+  render: function() {
+    return (
+      <ul className="user-list">
+        {this.props.users.map(function(user) {
+
+          return (
+            <li key={user.id}>
+              <Link to="{'/users/' + user.id}">{user.name}</Link>
+              <button onClick={this.toggleActive}>Toggle Active</button>
+            </li>
+          );
+
+        })}
+      </ul>
+    );
+  },
+
+  toggleActive: function() {
+    // We shouldn't be changing state in presentational components :(
+  }
+});
+
+This would technically work, but it’s not a good idea. Chances are, the event 
+is going to need to change data, and data which changes should be stored as state 
+- Presentational component shouldnt be doing this. 
+
+A better solution is to pass functionality from the Container Component 
+into the Presentational Component as a prop like this:
+
+// Container Component
+var UserListContainer = React.createClass({
+  ...
+  render: function() {
+    return (<UserList users={this.state.users} toggleActive={this.toggleActive} />);
+  },
+
+  toggleActive: function() {
+    // We should change state in container components :)
+  }
+});
+
+// Presentational Component
+var UserList = React.createClass({
+  render: function() {
+    return (
+      <ul className="user-list">
+      {this.props.users.map(function(user) {
+
+        return (
+          <li key={user.id}>
+            <Link to="{'/users/' + user.id}">{user.name}</Link>
+            <button onClick={this.props.toggleActive}>Toggle Active</button>
+          </li>
+        );
+
+      })}
+      </ul>
+    );
+  }
+});
+
+The onClick attribute is required to be where the view is — at the Presentational Component. 
+However, the function it calls has been moved to the parent Container Component. 
+This is better because the Container Component deals with state.
+
+If the parent function happens to change the state, then the state change will 
+cause a re-render on the parent function which in turn will update the child component. 
+This happens automatically in React.
+
+///////////////////////////////////////////////////////////////////////////////////
+
+Other cool react stuff:
+
+
+ES6 has a new spread operator which is very useful. React has adopted a similar
+ syntax to JSX. This really helps React with how data flows via props. 
+
+As of React 0.14 (released in late 2015), there is a new feature
+ for creating stateless (Presentational) components even easier. 
+ The new feature is called Stateless Functional Components
+By now you’ve probably noticed that as you separate your 
+Container and Presentational Components, many of your Presentational 
+ones just have a render method. In these cases, React now allows the 
+component to be written as a single function:
+
+You can clearly see that the new way is more compact. 
+But remember, this is only an option for components that 
+just need a render method.
+With the new Stateless Functional way, the function accepts an argument for props.
+ This means it doesn’t need to use this to access props.
+
+// The older, more verbose way
+var Component = React.createClass({
+
+  render: function() {
+    return (
+      <div>{this.props.foo}</div>
+    );
+  }
+
+});
+
+// The newer "Stateless Functional Component" way
+var Component = function(props) {
+  return (
+    <div>{props.foo}</div>
+  );
+};
+
+
+/////////////////////////////////////////////////////////////////////////////////////
+FINAL:
+///////////app/components/containers/user-list-container.js//////
+
+
+import React from 'react';
+import _ from 'lodash';
+import UserList from '../views/user-list';
+import * as userApi from '../../api/user-api';
+
+const UserListContainer = React.createClass({
+
+  getInitialState: function() {
+    return {
+      users: []
+    }
+  },
+
+  componentDidMount: function() {
+    userApi.getUsers().then(users => {
+      this.setState({users: users})
+    });
+  },
+
+  deleteUser: function(userId) {
+    userApi.deleteUser(userId).then(() => {
+      const newUsers = _.filter(this.state.users, user => user.id != userId);
+      this.setState({users: newUsers})
+    });
+  },
+
+  render: function() {
+    return (
+      <UserList users={this.state.users} deleteUser={this.deleteUser} />
+    );
+  }
+
+});
+
+export default UserListContainer;
+
+FINAL:
+////////app/components/views/user-list.js//////////////////////////////////////
+
+import React from 'react';
+import { Link } from 'react-router';
+
+// Using "Stateless Functional Components"
+export default function(props) {
+  return (
+    <div className="data-list">
+
+      {props.users.map(user => {
+
+        return (
+          <div key={user.id} className="data-list-item">
+            <div className="details">
+              <Link to={'/users/' + user.id}>{user.name}</Link>
+            </div>
+            <div className="controls">
+              <button onClick={props.deleteUser.bind(null, user.id)} className="delete">Delete</button>
+            </div>
+          </div>
+        );
+
+      })}
+
+    </div>
+  );
+}
+
+
+FINAL
+/////////////////app/components/containers/user-profile-container.js
+
+import React from 'react';
+import UserProfile from '../views/user-profile';
+import * as userApi from '../../api/user-api';
+
+const UserProfileContainer = React.createClass({
+
+  getInitialState: function() {
+    return {
+      name: null,
+      imageUrl: null,
+      twitter: null,
+      worksOn: null,
+      repos: []
+    }
+  },
+
+  componentDidMount: function() {
+    let userId = this.props.params.userId
+    userApi.getProfile(userId).then(profile => {
+      this.setState({
+        name: profile.name,
+        imageUrl: profile.imageUrl,
+        twitter: profile.twitter,
+        worksOn: profile.worksOn,
+        repos: profile.repos
+      });
+    });
+  },
+
+  render: function() {
+    return (
+      <UserProfile {...this.state} />
+    );
+  }
+
+});
+
+export default UserProfileContainer;
+
+
+FINAL
+/////////////app/components/views/user-profile.js
+
+import React from 'react';
+
+// Using "Stateless Functional Components"
+export default function(props) {
+  return (
+    <div className="user-profile">
+      <img src={props.imageUrl} />
+      <div className="details">
+        <h1>{props.name}</h1>
+        <a href={'http://twtter.com/' + props.twitter}>@{props.twitter}</a>
+        <p>Works on <strong>{props.worksOn}</strong></p>
+        <h3>Github Repos:</h3>
+        <ul className="repos">
+
+          {props.repos.map(repo => {
+
+            return (<li key={repo.id}><a href={repo.html_url}>{repo.name}</a></li>);
+
+          })}
+
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+
+FINAL
+/////////////////app/components/container/widget-list-container.js
+
+import React from 'react';
+import _ from 'lodash';
+import WidgetList from '../views/widget-list';
+import * as widgetApi from '../../api/widget-api';
+
+const WidgetListContainer = React.createClass({
+
+  getInitialState: function() {
+    return {
+      widgets: []
+    }
+  },
+
+  componentDidMount: function() {
+    widgetApi.getWidgets().then(widgets => {
+      this.setState({widgets: widgets})
+    });
+  },
+
+  deleteWidget: function(widgetId) {
+    widgetApi.deleteWidget(widgetId).then(() => {
+      const newWidgets = _.filter(this.state.widgets, widget => widget.id != widgetId);
+      this.setState({widgets: newWidgets})
+    });
+  },
+
+  render: function() {
+    return (
+      <WidgetList widgets={this.state.widgets} deleteWidget={this.deleteWidget} />
+    );
+  }
+
+});
+
+export default WidgetListContainer;
+
+FINAL
+/////////////app/components/views/widget-list.js
+
+import React from 'react';
+import { Link } from 'react-router';
+
+// Using "Stateless Functional Components"
+export default function(props) {
+  return (
+    <div className="data-list">
+
+      {props.widgets.map(widget => {
+
+        return (
+          <div key={widget.id} className="data-list-item">
+            <div className="details">{widget.name}</div>
+            <div className="controls">
+              <button onClick={props.deleteWidget.bind(null, widget.id)} 
+                               className="delete">Delete</button>
+            </div>
+          </div>
+        );
+
+      })}
+
+    </div>
+  );
+}

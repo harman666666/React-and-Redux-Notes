@@ -1,0 +1,916 @@
+Without React Router, to route you would have to do this:
+
+Branches on this.state.route:
+
+import React from 'react'
+import { render } from 'react-dom'
+
+const About = React.createClass({/*...*/})
+const Inbox = React.createClass({/*...*/})
+const Home = React.createClass({/*...*/})
+
+const App = React.createClass({
+  getInitialState() {
+    return {
+      route: window.location.hash.substr(1)
+    }
+  },
+
+  componentDidMount() {
+    window.addEventListener('hashchange', () => {
+      this.setState({
+        route: window.location.hash.substr(1)
+      })
+    })
+  },
+
+  render() {
+    let Child
+    switch (this.state.route) {
+      case '/about': Child = About; break;
+      case '/inbox': Child = Inbox; break;
+      default:      Child = Home;
+    }
+
+    return (
+      <div>
+        <h1>App</h1>
+        <ul>
+          <li><a href="#/about">About</a></li>
+          <li><a href="#/inbox">Inbox</a></li>
+        </ul>
+        <Child/>
+      </div>
+    )
+  }
+})
+
+render(<App />, document.body)
+
+Refactor Code using React Router:
+
+import React from 'react'
+import {render} from 'react-dom'
+
+// First we import some modules...
+import { Router, Route, IndexRoute, Link, hashHistory } from 'react-router'
+
+// Then we delete a bunch of code from App and
+// add some <Link> elements...
+const App = React.createClass({
+  render() {
+    return (
+      <div>
+        <h1>App</h1>
+        {/* change the <a>s to <Link>s */}
+        <ul>
+          <li><Link to="/about">About</Link></li>
+          <li><Link to="/inbox">Inbox</Link></li>
+        </ul>
+
+        {/*
+          next we replace `<Child>` with `this.props.children`
+          the router will figure out the children for us
+        */}
+        {this.props.children}
+      </div>
+    )
+  }
+})
+
+// Finally, we render a <Router> with some <Route>s.
+// It does all the fancy routing stuff for us.
+
+render((
+  <Router history={hashHistory}>
+    <Route path="/" component={App}>
+      <IndexRoute component={Home} />
+      <Route path="about" component={About} />
+      <Route path="inbox" component={Inbox} />
+    </Route>
+  </Router>
+), document.body)
+
+React Router knows how to build nested UI for us, so we don't have 
+to manually figure out which <Child> component to render. 
+For example, for a full path /about it would build <App><About /></App>.
+
+Internally, the router converts your <Route> element hierarchy to a route config.
+ But if you're not digging the JSX you can use plain objects instead:
+
+const routes = {
+  path: '/',
+  component: App,
+  indexRoute: { component: Home },
+  childRoutes: [
+    { path: 'about', component: About },
+    { path: 'inbox', component: Inbox },
+  ]
+}
+
+render(<Router history={history} routes={routes} />, document.body)
+
+
+Lets make a design like this: 
+
+Imagine now that Inbox has some nested UI at different 
+URLs, maybe something like this master detail view:
+
+path: /inbox/messages/1234
+
++---------+------------+------------------------+
+| About   |    Inbox   |                        |
++---------+            +------------------------+
+| Compose    Reply    Reply All    Archive      |
++-----------------------------------------------+
+|Movie tomorrow|                                |
++--------------+   Subject: TPS Report          |
+|TPS Report        From:    boss@big.co         |
++--------------+                                |
+|New Pull Reque|   So ...                       |
++--------------+                                |
+|...           |                                |
++--------------+--------------------------------+
+
+And maybe a stats page when not viewing a message:
+
+path: /inbox
+
++---------+------------+------------------------+
+| About   |    Inbox   |                        |
++---------+            +------------------------+
+| Compose    Reply    Reply All    Archive      |
++-----------------------------------------------+
+|Movie tomorrow|                                |
++--------------+   10 Unread Messages           |
+|TPS Report    |   22 drafts                    |
++--------------+                                |
+|New Pull Reque|                                |
++--------------+                                |
+|...           |                                |
++--------------+--------------------------------+
+
+
+// Make a new component to render inside of Inbox
+const Message = React.createClass({
+  render() {
+    return <h3>Message</h3>
+  }
+})
+
+const Inbox = React.createClass({
+  render() {
+    return (
+      <div>
+        <h2>Inbox</h2>
+        {/* Render the child route component */}
+        {this.props.children}
+      </div>
+    )
+  }
+})
+
+render((
+  <Router history={history}>
+    <Route path="/" component={App}>
+      <IndexRoute component={Home} />
+      <Route path="about" component={About} />
+      <Route path="inbox" component={Inbox}>
+        {/* add some nested routes where we want the UI to nest */}
+        {/* render the stats page when at `/inbox` */}
+        <IndexRoute component={InboxStats}/>
+        {/* render the message component at /inbox/messages/123 */}
+        <Route path="messages/:id" component={Message} />
+      </Route>
+    </Route>
+  </Router>
+), document.body)
+
+Now visits to URLs like inbox/messages/Jkei3c32 will match the new route and build this for you:
+
+<App>
+  <Inbox>
+    <Message params={{ id: 'Jkei3c32' }}/>
+  </Inbox>
+</App>
+
+And visits to /inbox will build this:
+
+<App>
+  <Inbox>
+    <InboxStats/>
+  </Inbox>
+</App>
+
+
+Getting URL Parameters
+
+const Message = React.createClass({
+
+  componentDidMount() {
+    // from the path `/inbox/messages/:id`
+    const id = this.props.params.id
+
+    fetchMessage(id, function (err, message) {
+      this.setState({ message: message })
+    })
+  },
+
+  // ...
+
+})
+
+You can also access parameters from the query string. For instance, if you're on /foo?bar=baz, 
+you can access this.props.location.query.bar to get the value 
+"baz" from your Route component.
+
+/////////////////////////////////////////////////////
+///////////////////////////////////////////////////
+/////////////////////////////////////////////////
+
+Optional Route Attributes
+
+Sometimes, <Route> will have a component attribute with no path, 
+as in the SearchLayout route from above. Other times, it might 
+be necessary to have a <Route> with a path and no component. 
+To see why, let's start with this example:
+
+<Route path="product/settings" component={ProductSettings} />
+<Route path="product/inventory" component={ProductInventory} />
+<Route path="product/orders" component={ProductOrders} />
+
+The /product portion of the path is repetitive. We can remove 
+the repetition by wrapping all three routes in a new <Route>:
+
+<Route path="product">
+  <Route path="settings" component={ProductSettings} />
+  <Route path="inventory" component={ProductInventory} />
+  <Route path="orders" component={ProductOrders} />
+</Route>
+
+Again, React Router shows its expressiveness. 
+Quiz: did you notice the issue with both solutions? 
+At the moment we have no rules for when the user visits the /product path.
+
+To fix this, we can add an IndexRoute:
+
+<Route path="product">
+  <IndexRoute component={ProductProfile} />
+  <Route path="settings" component={ProductSettings} />
+  <Route path="inventory" component={ProductInventory} />
+  <Route path="orders" component={ProductOrders} />
+</Route>
+
+
+//////////////////////////////////////////////////
+////////////////////////////////////////////////////
+//////////////////////////////////////////////////
+
+Route Configuration
+
+LEts expand the sample app from the intro:
+
+import React from 'react'
+import { render } from 'react-dom'
+import { Router, Route, Link } from 'react-router'
+
+const App = React.createClass({
+  render() {
+    return (
+      <div>
+        <h1>App</h1>
+        <ul>
+          <li><Link to="/about">About</Link></li>
+          <li><Link to="/inbox">Inbox</Link></li>
+        </ul>
+        {this.props.children}
+      </div>
+    )
+  }
+})
+
+const About = React.createClass({
+  render() {
+    return <h3>About</h3>
+  }
+})
+
+const Inbox = React.createClass({
+  render() {
+    return (
+      <div>
+        <h2>Inbox</h2>
+        {this.props.children || "Welcome to your Inbox"}
+      </div>
+    )
+  }
+})
+
+const Message = React.createClass({
+  render() {
+    return <h3>Message {this.props.params.id}</h3>
+  }
+})
+
+render((
+  <Router>
+    <Route path="/" component={App}>
+      <Route path="about" component={About} />
+      <Route path="inbox" component={Inbox}>
+        <Route path="messages/:id" component={Message} />
+      </Route>
+    </Route>
+  </Router>
+), document.body)
+
+
+As configured, this app knows how to render the following 4 URLs:
+
+URL	Components
+/	App
+/about	App -> About
+/inbox	App -> Inbox
+/inbox/messages/:id	App -> Inbox -> Message
+
+
+Adding an Index
+
+Imagine we'd like to render another component inside of App when the URL is /. 
+Currently, this.props.children inside of App's render 
+method is undefined in this case. 
+
+We can use an 
+<IndexRoute> to specify a "default" page.
+
+import { IndexRoute } from 'react-router'
+
+const Dashboard = React.createClass({
+  render() {
+    return <div>Welcome to the app!</div>
+  }
+})
+
+render((
+  <Router>
+    <Route path="/" component={App}>
+      {/* Show the dashboard at / */}
+      <IndexRoute component={Dashboard} />
+      <Route path="about" component={About} />
+      <Route path="inbox" component={Inbox}>
+        <Route path="messages/:id" component={Message} />
+      </Route>
+    </Route>
+  </Router>
+), document.body)
+
+Now, inside App's render method this.props.children will be a <Dashboard> element! 
+
+URL			Components
+/			App -> Dashboard
+/about			App -> About
+/inbox			App -> Inbox
+/inbox/messages/:id	App -> Inbox -> Message
+
+
+It would be nice if we could remove the /inbox segment from the /inbox/messages/:id URL 
+pattern, but still render Message nested inside the App -> Inbox UI. 
+Pathless routes let us do exactly that.
+
+render((
+  <Router>
+    <Route path="/" component={App}>
+      <IndexRoute component={Dashboard} />
+      <Route path="about" component={About} />
+      <Route path="inbox" component={Inbox} />
+
+      {/* Use /messages/:id instead of /inbox/messages/:id */}
+      <Route component={Inbox}>
+        <Route path="messages/:id" component={Message} />
+      </Route>
+    </Route>
+  </Router>
+), document.body)
+
+
+The ability to use declare routes without paths gives us complete 
+control over what the URL looks like! We don't have to add more
+ segments to the URL just to get nested UI.
+
+We can now render the following URLs:
+
+URL	Components
+/	App -> Dashboard
+/about	App -> About
+/inbox	App -> Inbox
+/messages/:id	App -> Inbox -> Message
+
+Preserving URLs
+Wait a Minute ... we just changed a URL! That's not cool. 
+Now everyone who had a link to /inbox/messages/5 has a broken link. :(
+
+Not to worry. We can use a <Redirect> to make sure that URL still works!
+Now when someone clicks on that link to /inbox/messages/5
+       they'll automatically be redirected to /messages/5.
+
+
+Enter and Leave Hooks
+
+Routes may also define onEnter and onLeave
+ hooks that are invoked once a transition 
+has been confirmed. These hooks are useful 
+for various things like requiring auth when 
+a route is entered and saving stuff to 
+persistent storage before a route unmounts.
+
+During a transition, onLeave hooks run 
+first on all routes we are leaving, starting
+ with the leaf route on up to the first common 
+ancestor route. Next, onEnter hooks 
+run starting with the first parent route we're 
+entering down to the leaf route.
+
+Continuing with our example above, if a user clicked on a link to /about from /messages/5, the following hooks would run in this order:
+
+onLeave on the /messages/:id route
+onLeave on the /inbox route
+onEnter on the /about route
+
+
+Without using jsx: 
+
+The <Redirect> configuration helper is not available when using
+plain routes, so you have to set up the redirect using the onEnter hook.
+
+The route config we've discussed up to this point 
+could also be specified like this:
+
+const routes = {
+  path: '/',
+  component: App,
+  indexRoute: { component: Dashboard },
+  childRoutes: [
+    { path: 'about', component: About },
+    {
+      path: 'inbox',
+      component: Inbox,
+      childRoutes: [{
+        path: 'messages/:id',
+        onEnter: ({ params }, replace) => replace(`/messages/${params.id}`)
+      }]
+    },
+    {
+      component: Inbox,
+      childRoutes: [{
+        path: 'messages/:id', component: Message
+      }]
+    }
+  ]
+}
+
+render(<Router routes={routes} />, document.body)
+
+/////////////////////////////////////////////
+///////////////////////////////////////////
+////////////////////////////////////////////
+
+Route MATCHING
+
+Route has 3 attributes:
+
+1. Nesting
+2. Path
+3. Precedence
+
+Path Syntax
+
+A route path is a string pattern that is 
+used to match a URL (or a portion of one). 
+Route paths are interpreted literally, 
+except for the following special symbols:
+
+:paramName – matches a URL segment up to the next 
+/, ?, or #. The matched string is called a param
+
+() – Wraps a portion of the URL that is optional. 
+You may escape parentheses if you want to use 
+them in a url using a blackslash \
+
+* – Matches all characters (non-greedy) up to the next 
+character in the pattern, or to the end of the URL 
+if there is none, and creates a splat param
+
+** - Matches all characters (greedy) until 
+the next /, ?, or # and creates a splat param
+
+<Route path="/hello/:name">         // matches /hello/michael and /hello/ryan
+<Route path="/hello(/:name)">       // matches /hello, /hello/michael, and /hello/ryan
+<Route path="/files/*.*">           // matches /files/hello.jpg and /files/hello.html
+<Route path="/**/*.jpg">            // matches /files/hello.jpg and /files/path/to/file.jpg
+<Route path="/hello\\(:name\\)">    // matches /hello(michael)
+
+If a route uses a relative path, it builds 
+upon the accumulated path of its ancestors. 
+Nested routes may opt-out of this behavior 
+by using an absolute path.
+
+Precedence
+
+Finally, the routing algorithm attempts to match routes in the order 
+they are defined, top to bottom. So, when you have two sibling routes 
+you should be sure the first doesn't match all possible paths that 
+can be matched by the later sibling. For example, don't do this:
+
+<Route path="/comments" ... />
+<Redirect from="/comments" ... />
+
+//////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+Index ROutes and INdex Links
+
+
+To illustrate the use case for IndexRoute, 
+imagine the following route config without it:
+
+<Router>
+  <Route path="/" component={App}>
+    <Route path="accounts" component={Accounts}/>
+    <Route path="statements" component={Statements}/>
+  </Route>
+</Router>
+
+When the user visits /, the App component is rendered, but none 
+of the children are, so this.props.children inside of App will 
+be undefined. To render some default UI you could 
+easily do {this.props.children || <Home/>}.
+
+But now Home can't participate in routing, like the 
+onEnter hooks, etc. You render in the same position as 
+Accounts and Statements, so the router allows you to 
+have Home be a first class route component with IndexRoute.
+
+<Router>
+  <Route path="/" component={App}>
+    <IndexRoute component={Home}/>
+    <Route path="accounts" component={Accounts}/>
+    <Route path="statements" component={Statements}/>
+  </Route>
+</Router>
+
+Now App can render {this.props.children} and we 
+have a first-class route for Home that can participate in routing.
+
+Index Redirects
+
+Suppose your basic route configuration looks like:
+
+<Route path="/" component={App}>
+  <Route path="welcome" component={Welcome} />
+  <Route path="about" component={About} />
+</Route>
+Suppose you want to redirect / to /welcome. To do 
+this, you need to set up an index route that does 
+the redirect. To do this, use the <IndexRedirect> component:
+
+<Route path="/" component={App}>
+  <IndexRedirect to="/welcome" />
+  <Route path="welcome" component={Welcome} />
+  <Route path="about" component={About} />
+</Route>
+
+This is equivalent to setting up an index route with just an 
+onEnter hook that redirects the user. 
+You would set this up with plain routes as:
+
+const routes = [{
+  path: '/',
+  component: App,
+  indexRoute: { onEnter: (nextState, replace) => replace('/welcome') },
+  childRoutes: [
+    { path: 'welcome', component: Welcome },
+    { path: 'about', component: About }
+  ]
+}]
+
+Index Links
+
+If you were to <Link to="/">Home</Link> in this app, it 
+would always be active since every URL starts with /. 
+This is a problem because we'd like to link to Home but 
+only be active if Home is rendered.
+
+To have a link to / that is only active when the 
+Home route is rendered, use <IndexLink to="/">Home</IndexLink>.
+
+///////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////
+
+Confirming Navigation
+
+You can prevent a transition from happening or 
+prompt the user before leaving a route with a leave hook.
+
+const Home = withRouter(
+  React.createClass({
+
+    componentDidMount() {
+      this.props.router.setRouteLeaveHook(this.props.route, this.routerWillLeave)
+    },
+
+    routerWillLeave(nextLocation) {
+      // return false to prevent a transition w/o prompting the user,
+      // or return a string to allow the user to decide:
+      if (!this.state.isSaved)
+        return 'Your work is not saved! Are you sure you want to leave?'
+    },
+
+    // ...
+
+  })
+)
+
+
+////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////
+
+Component Lifecycle
+
+It's important to understand which lifecycle hooks 
+are going to be called on your route components to 
+implement lots of different functionality in your app. 
+The most common thing is fetching data.
+
+There is no difference in the lifecycle of a component in the router 
+as just React itself. Let's peel away the idea of routes, and just think 
+about the components being rendered at different URLs.
+
+Consider this route config:
+
+<Route path="/" component={App}>
+  <IndexRoute component={Home}/>
+  <Route path="invoices/:invoiceId" component={Invoice}/>
+  <Route path="accounts/:accountId" component={Account}/>
+</Route>
+
+Lifecycle hooks when routing
+
+Lets say the user enters the app at /.
+
+Component	Lifecycle Hooks called
+App	(2) componentDidMount
+Home	(1) componentDidMount
+Invoice	N/A
+Account	N/A
+
+Now they navigate from / to /invoices/123
+
+Component	Lifecycle Hooks called
+App	(1) componentWillReceiveProps, (4) componentDidUpdate
+Home	(2) componentWillUnmount
+Invoice	(3) componentDidMount
+Account	N/A
+
+App gets componentWillReceiveProps and componentDidUpdate 
+because it stayed rendered but just received new props 
+from the router (like: children, params, location, etc.)
+Home is no longer rendered, so it gets unmounted.
+Invoice is mounted for the first time.
+Now they navigate from /invoices/123 to /invoices/789
+
+Component	Lifecycle Hooks called
+App	(1) componentWillReceiveProps, (4) componentDidUpdate
+Home	N/A
+Invoice	(2) componentWillReceiveProps, (3) componentDidUpdate
+Account	N/A
+
+All the components that were mounted before, are still mounted, 
+they just receive new props from the router.
+
+Now they navigate from /invoices/789 to /accounts/123
+
+Component	Lifecycle Hooks called
+App	(1) componentWillReceiveProps, (4) componentDidUpdate
+Home	N/A
+Invoice	(2) componentWillUnmount
+Account	(3) componentDidMount
+Fetching Data
+
+While there are other ways to fetch data with the router, 
+the simplest way is to simply use the lifecycle hooks of 
+your components and keep that data in state. Now that we 
+understand the lifecycle of components when changing routes, 
+we can implement simple data fetching inside of Invoice.
+
+let Invoice = React.createClass({
+
+  getInitialState () {
+    return {
+      invoice: null
+    }
+  },
+
+  componentDidMount () {
+    // fetch data initially in scenario 2 from above
+    this.fetchInvoice()
+  },
+
+  componentDidUpdate (prevProps) {
+    // respond to parameter change in scenario 3
+    let oldId = prevProps.params.invoiceId
+    let newId = this.props.params.invoiceId
+    if (newId !== oldId)
+      this.fetchInvoice()
+  },
+
+  componentWillUnmount () {
+    // allows us to ignore an inflight request in scenario 4
+    this.ignoreLastFetch = true
+  },
+
+  fetchInvoice () {
+    let url = `/api/invoices/${this.props.params.invoiceId}`
+    this.request = fetch(url, (err, data) => {
+      if (!this.ignoreLastFetch)
+        this.setState({ invoice: data.invoice })
+    })
+  },
+
+  render () {
+    return <InvoiceView invoice={this.state.invoice}/>
+  }
+
+})
+
+
+///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////
+
+Active Links
+
+A cool feature of the <Link> component is its ability to know when it's active:
+
+<Link to="/users" activeClassName="active">Users</Link>
+If the user is on the /users path, the router will seek out 
+matching anchors that were made with <Link> and it will toggle 
+their active class. See more on this feature.
+
+#Browser History
+
+To prevent confusion, I've left out an important detail until now. 
+The <Router> needs to know which history tracking strategy to use. 
+React Router docs recommend browserHistory which is implemented as follows:
+
+var browserHistory = ReactRouter.browserHistory;
+
+ReactDOM.render((
+  <Router history={browserHistory}>
+    ...
+  </Router>
+), document.getElementById('root'));
+
+In previous versions of React Router, the history attribute 
+was not required and the default was to use hashHistory. 
+As the name suggests, it used a # hash sign in the URL to 
+manage front-end SPA-style routing, similar to what you 
+might expect from a Backbone.js router.
+
+With hashHistory, URLs will look like this:
+
+example.com
+example.com/#/users?_k=ckuvup
+example.com/#/widgets?_k=ckuvup
+What's up with those ugly query strings though?
+
+When browserHistory is implemented, the paths look more organic:
+
+example.com
+example.com/users
+example.com/widgets
+
+There's a caveat though on the server when browserHistory
+ is used on the front-end. If the user starts their visit 
+at example.com and then navigates to /users and /widgets,
+ React Router handles this scenario as expected. However, 
+if the user starts their visit by typing example.com/widgets 
+directly into the browser, or if they refresh on example.com/widgets, 
+then the browser must make at least one request to the server for /widgets.
+ If there isn't a server-side router though, this will deliver a 404:
+
+To solve the 404 problem from the server, React Router 
+recommends a wildcard router on the server-side. With 
+this strategy, no matter what server-side route is called, 
+the server should always serve the same HTML file. Then if 
+the user starts directly at example.com/widgets, even though 
+the same HTML file is returned, React Router is smart enough 
+to load the correct component.
+
+The user won't notice anything weird, but you might have concerns 
+about always serving the same HTML file. In code examples, this 
+series will continue to use the "wildcard router" strategy, but 
+it's up to you to handle your server-side routing in ways that 
+you see fit.
+
+Can React Router be used on both server-side and client-side in an 
+isomorphic way? Sure it can, but that's way beyond the scope of this tutorial.
+
+////////////////////////////////////////////////////
+///////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+
+Redirect with browserHistory
+
+The browserHistory object is a singleton so you can
+include it in any of your files. If you need to 
+manually redirect the user in any of your code, 
+you can use it's push method to do so:
+
+browserHistory.push('/some/path');
+
+////////////////////////////////////////////////////
+///////////////////////////////////////////////////
+/////////////////////////////////////////////////////
+
+Navigating Outside of Components
+
+
+While you can use this.props.router from withRouter to 
+navigate around, many apps want to be able to navigate 
+outside of their components. They can do that with the 
+history the app gives to Router.
+
+// Your main file that renders a <Router>:
+import { Router, browserHistory } from 'react-router'
+import routes from './app/routes'
+
+render(
+  <Router history={browserHistory} routes={routes} />,
+  mountNode
+)
+// Somewhere like a Redux middleware or Flux action:
+import { browserHistory } from 'react-router'
+
+// Go to /some/path.
+browserHistory.push('/some/path')
+
+// Go back to previous location.
+browserHistory.goBack()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,851 @@
+// ES6
+foo.map(x => x * x);
+// ES3
+foo.map(function (x) { return x * x; });
+API
+
+fromJS()
+Deeply converts plain JS objects and arrays to Immutable Maps and Lists.
+
+is()
+Value equality check with semantics similar to Object.is, but treats
+ Immutable Iterables as values, 
+equal if the second Iterable includes equivalent values.
+
+List
+Lists are ordered indexed dense collections, much like a JavaScript Array.
+
+Map
+Immutable Map is an unordered Iterable.Keyed of (key, value) pairs with
+ O(log32 N) gets and O(log32 N) persistent sets.
+OrderedMap
+A type of Map that has the additional guarantee that the iteration
+ order of entries will be the order in which they were set().
+
+Set
+A Collection of unique values with O(log32 N) adds and has.
+
+OrderedSet
+A type of Set that has the additional guarantee that the iteration
+ order of values will be the order in which they were added.
+
+tack
+Stacks are indexed collections which support very efficient O(1) 
+addition and removal from the front using 
+unshift(v) and shift().
+
+Range()
+Returns a Seq.Indexed of numbers from start (inclusive) to end (exclusive), by step, where start defaults to 0, 
+step to 1, and end to infinity. When start is equal to end, returns 
+empty range.
+
+Repeat()
+Returns a Seq.Indexed of value repeated times times. When times 
+is not defined, returns an infinite Seq of value.
+Record
+Creates a new Class which produces Record instances. A record is 
+similar to a JS object, 
+but enforce a specific set of allowed string keys, and have default values.
+
+Seq
+Represents a sequence of values, but may not be backed by a concrete 
+data structure.
+
+Iterable
+The Iterable is a set of (key, value) entries which can be iterated, 
+and is the base class for all collections in 
+immutable, allowing them to make use of all the Iterable methods 
+(such as map and filter).
+
+Collection
+Collection is the abstract base class for concrete data structures. 
+It cannot be constructed directly.
+
+Luckily, Immutable.js has persistent data structures, which means 
+that we can modify the data - with the caveat that the original 
+value does not get modified, but that the operation returns a 
+new value. That might sound a little confusing, but things 
+will clear up in just a second. Hang in there!
+
+EXAMPLES:
+
+import { Map } from 'immutable';
+
+let person = Map({
+  firstName: 'Thomas',
+  lastName: 'Tuts'
+});
+
+person.firstName; // -> undefined
+person.get('firstName'); // -> 'Thomas'
+
+/////////////////
+
+import { Map } from 'immutable';
+
+let person = Map({
+  firstName: 'Thomas',
+  lastName: 'Tuts'
+});
+
+person.set('firstName', 'John');
+
+person.get('firstName'); // -> 'Thomas'
+
+///////////
+
+import { Map } from 'immutable';
+
+let person = Map({
+  firstName: 'Thomas',
+  lastName: 'Tuts'
+});
+
+person = person.set('firstName', 'John');
+
+person.get('firstName'); // -> 'John'
+
+//////////////////
+
+An Iterable is a set of key/value entries that can be iterated
+ (e.g. using .map(), .filter(), .reduce(), …). All collections
+  in Immutable.js, like Map and List, use Iterable as a base class.
+   This means that all methods of an Iterable are available both 
+   on the Map and the List examples we’ll see below. All inherited
+    methods are also shown in the Map and List docs, so you don’t
+     need to go back and forth between tabs to see what methods 
+     are available to use.
+
+/////////////
+
+Think of Map as an object. It stores values using keys. 
+Let’s create a Map that represents a data structure of a 
+book in an online store. To make things a little easier 
+for ourselves, we’ll use the .fromJS() method provided by
+ Immutable.js. This returns a given JS object as an Immutable.js 
+ representation, converting objects into Maps, and arrays into Lists.
+
+import { fromJS } from 'immutable';
+
+let book = fromJS({
+  title: 'Harry Potter & The Goblet of Fire',
+  isbn: '0439139600',
+  series: 'Harry Potter',
+  author: {
+    firstName: 'J.K.',
+    lastName: 'Rowling'
+  }
+});     
+
+///////////////
+
+Let’s get some data! First, we’ll get the book’s title. 
+That’s pretty easy, especially considering the initial 
+code examples in this post used the very same syntax. Here goes:
+
+book.get('title'); // -> 'Harry Potter & The Goblet of Fire'
+
+Now, to make things a little more difficult, let’s get 
+the author’s last name. Many people would reach for this solution:
+
+book.get('author').get('lastName'); // -> 'Rowling'
+
+ Immutable.js provides methods for setting/getting 
+ nested data too. Neat! The syntax looks like this:
+
+book.getIn(['author', 'lastName']); // -> 'Rowling'
+
+Basically, any time you see a method with In behind it 
+(e.g. .getIn(), .setIn(), .updateIn(), …), it is a method
+ that takes either a key or a key path as an argument. 
+ A key path is usually an array that contains the path to
+  the data you’re interested in. These keys can be regular
+   keys or indexes (for Lists, which we’ll talk about in
+    just a second).
+
+Let’s change our author’s last name to 'Bowling'.
+ Just like we did before when retrieving the data, 
+ we’ll use a key path to make things a little more 
+ readable. .setIn() takes two parameters: the first 
+ one is a key path (or just a key), and the second 
+ one is the value you’d like to set on that key or key path.
+
+book.setIn(['author', 'lastName'], 'Bowling');
+
+Returns a new book with a modified arthur value
+
+ If we were to read the author’s last name in our book variable,
+  it would still be 'Rowling'. You probably know the drill by now:
+   to update the book, you need to assign the updated result of 
+   the operation to your variable:
+
+book = book.setIn(['author', 'lastName'], 'Bowling');
+There are a bunch of other methods, like .merge(), .delete(), 
+update(), and many others. In the interest of making this 
+blogpost (relatively) short, we won’t discuss these here.
+
+Lists
+Think of Lists as being similar to standard JavaScript arrays.
+ They are ordered and indexed. With a List, we have access
+  to operations like .push(), .pop(), .unshift(), and many 
+  other array-like methods (including the methods inherited
+   from Iterable). Let’s make our book data a little more 
+   interesting by introducing genres and a list with prices 
+   from 4 stores:
+
+import { fromJS } from 'immutable';
+
+let book = fromJS({
+  title: 'Harry Potter & The Goblet of Fire',
+  isbn: '0439139600',
+  series: 'Harry Potter',
+  author: {
+    firstName: 'J.K.',
+    lastName: 'Rowling'
+  },
+  genres: [
+    'Crime',
+    'Fiction',
+    'Adventure',
+  ],
+  storeListings: [
+    {storeId: 'amazon', price: 7.95},
+    {storeId: 'barnesnoble', price: 7.95},
+    {storeId: 'biblio', price: 4.99},
+    {storeId: 'bookdepository', price: 11.88},
+  ]
+});
+
+(Remember, our arrays get converted to Lists automatically. 
+The same thing happens for objects, which get converted to Maps.)
+
+To get a value of an index (i.e. a key) in a List, you use the .get() 
+or .getIn() methods:
+
+book.getIn(['genres', 1]); // -> 'Fiction'
+Remember, we can mix and match keys and indexes in the key path,
+ so to get Amazon’s price for the book, we’d use this key path:
+
+book.getIn(['storeListings', 0, 'price']); // -> 7.95
+
+MODIFYING DATA
+
+Wait a minute, what’s ‘Crime’ doing in there? This 
+is Harry Potter! Someone clearly botched the data entry. 
+Let’s fix that by updating the right value:
+
+book = book.setIn(['genres', 0], 'Fantasy');
+Much better! Suppose we want to add an additional genre 
+‘Wizards’ to the book:
+
+book = book.set('genres', book.get('genres').push('Wizards'));
+
+OR
+
+The updater function is basically a function that gets the 
+value passed in as a parameter (similar to methods like .map() 
+and .forEach()), in which we update the value. In our case, 
+we’ll have access to the genres, which we will update by 
+pushing another genre into the List:
+
+book = book.update('genres', genres => genres.push('Wizards'));
+
+Let’s imagine for a second that we’d need to update Amazon’s 
+price to $6.80. This could be done using .setIn() and the right 
+key path:
+
+book = book.setIn(['storeListings', 0, 'price'], 6.80);
+However, we usually don’t know the index of the entry we want to
+ update. It’s pretty easy to find it using .findIndex():
+
+const indexOfListingToUpdate = book.get('storeListings').findIndex(listing => {
+  return listing.get('storeId') === 'amazon';
+});
+
+book = book.setIn(['storeListings', indexOfListingToUpdate, 'price'], 6.80);
+
+
+Let’s calculate the average price of the book across bookstores. We’ll 
+first make a sum of all the prices using .reduce(), and then divide it 
+by the amount of store listings using .count().
+
+book.get('storeListings')
+  .reduce(
+    (total, value) => total + value.get('price'),
+    0
+  ) / book.get('storeListings').count();
+
+Finally, a more complex example: for some reason, all of the prices need to 
+be reduced by 10% for all store listings. We’ll update our book prices 
+accordingly, using a combination of .update() and .map():
+
+book = book.update(
+  'storeListings',
+  storeListings => storeListings.map(listing => listing.update(
+    'price',
+    price => price * 0.9 
+  ))
+);
+
+var Immutable = require('immutable')
+Maps
+var map = Immutable.Map({ a: 1, b: 2, c: 3 })
+
+map
+  .set('b', 50)
+  .get('b') // 50
+Lists
+var list = Immutable.List.of(1, 2)
+
+list
+  .push(3, 4, 5)
+  .unshift(0)
+  .concat(list2, list3)
+  .get(0)
+  .size
+Nested maps
+var nested = Immutable.fromJS({ user: { profile: { name: 'John' } } })
+
+nested
+  .mergeDeep({ user: { profile: { age: 90 } } })
+  .setIn([ 'user', 'profile', 'name' ], 'Jack')
+  .updateIn([ 'user', 'profile', 'name' ], (s) => s.toUpperCase())
+  .getIn(['user', 'profile', 'name']) // 'Jack'
+
+
+  ////////////////////////////////////
+
+  Iterable.js
+
+The Iterable is a set of (key, value) entries which can be iterated, 
+and is the base class for all collections in immutable, allowing 
+them to make use of all the Iterable methods (such as map and filter).
+class Iterable<K, V>
+
+DISCUSSION
+Note: An iterable is always iterated in the same order, 
+however that order may not always be well defined, as is the case for the Map and Set.
+
+
+Static methods
+
+Iterable.isIterable()
+True if maybeIterable is an Iterable, or any of its subclasses.
+Iterable.isIterable(maybeIterable: any): boolean
+EXAMPLE
+Iterable.isIterable([]); // false
+Iterable.isIterable({}); // false
+Iterable.isIterable(Immutable.Map()); // true
+Iterable.isIterable(Immutable.List()); // true
+Iterable.isIterable(Immutable.Stack()); // true
+Iterable.isKeyed()
+    True if maybeKeyed is an Iterable.Keyed, or any of its subclasses.
+Iterable.isKeyed(maybeKeyed: any): boolean
+Iterable.isIndexed()
+    True if maybeIndexed is a Iterable.Indexed, or any of its subclasses.
+Iterable.isIndexed(maybeIndexed: any): boolean
+Iterable.isAssociative()
+    True if maybeAssociative is either a keyed or indexed Iterable.
+Iterable.isAssociative(maybeAssociative: any): boolean
+Iterable.isOrdered()
+    True if maybeOrdered is an Iterable where iteration order is well defined. True 
+    for Iterable.Indexed as well as OrderedMap and OrderedSet.
+Iterable.isOrdered(maybeOrdered: any): boolean
+Types
+
+Iterable.Keyed
+Value equality
+
+equals()
+True if this and the other Iterable have value equality, as defined by Immutable.is().
+equals(other: Iterable<K, V>): boolean
+DISCUSSION
+Note: This is equivalent to Immutable.is(this, other), but provided to allow for chained expressions.
+hashCode()
+Computes and returns the hashed identity for this Iterable.
+hashCode(): number
+DISCUSSION
+The hashCode of an Iterable is used to determine potential equality, and is used when adding this to a Set or as a key in a Map, enabling lookup via a different instance.
+
+var a = List.of(1, 2, 3);
+var b = List.of(1, 2, 3);
+assert(a !== b); // different instances
+var set = Set.of(a);
+assert(set.has(b) === true);
+If two values have the same hashCode, they are not guaranteed to be equal. If two values have different hashCodes, they must not be equal.
+Reading values
+
+get()
+    Returns the value associated with the provided key, or 
+    notSetValue if the Iterable does not contain this key.
+get(key: K, notSetValue?: V): V
+DISCUSSION
+Note: it is possible a key may be associated with an undefined value, so if notSetValue is not provided and this method returns undefined, that does not guarantee the key was not found.
+has()
+True if a key exists within this Iterable, using Immutable.is to determine equality
+has(key: K): boolean
+includes()
+True if a value exists within this Iterable, using Immutable.is to determine equality
+includes(value: V): boolean
+ALIAS
+contains()
+first()
+    The first value in the Iterable.
+first(): V
+last()
+    The last value in the Iterable.
+last(): V
+    Reading deep values
+
+getIn()
+Returns the value found by following a path of keys or indices through nested Iterables.
+getIn(searchKeyPath: Array<any>, notSetValue?: any): any
+getIn(searchKeyPath: Iterable<any, any>, notSetValue?: any): any
+hasIn()
+True if the result of following a path of keys or indices through nested Iterables 
+results in a set value.
+hasIn(searchKeyPath: Array<any>): boolean
+hasIn(searchKeyPath: Iterable<any, any>): boolean
+Conversion to JavaScript types
+
+toJS()
+Deeply converts this Iterable to equivalent JS.
+toJS(): any
+ALIAS
+toJSON()
+DISCUSSION
+Iterable.Indexeds, and Iterable.Sets become Arrays, while Iterable.Keyeds become Objects.
+toArray()
+Shallowly converts this iterable to an Array, discarding keys.
+toArray(): Array<V>
+toObject()
+Shallowly converts this Iterable to an Object.
+toObject(): {[key: string]: V}
+DISCUSSION
+Throws if keys are not strings.
+Conversion to Collections
+
+toMap()
+Converts this Iterable to a Map, Throws if keys are not hashable.
+toMap(): Map<K, V>
+DISCUSSION
+Note: This is equivalent to Map(this.toKeyedSeq()), but provided for convenience and to allow for chained expressions.
+toOrderedMap()
+Converts this Iterable to a Map, maintaining the order of iteration.
+toOrderedMap(): OrderedMap<K, V>
+DISCUSSION
+Note: This is equivalent to OrderedMap(this.toKeyedSeq()), but provided for convenience and to allow for chained expressions.
+toSet()
+Converts this Iterable to a Set, discarding keys. Throws if values are not hashable.
+toSet(): Set<V>
+DISCUSSION
+Note: This is equivalent to Set(this), but provided to allow for chained expressions.
+toOrderedSet()
+Converts this Iterable to a Set, maintaining the order of iteration and discarding keys.
+toOrderedSet(): OrderedSet<V>
+DISCUSSION
+Note: This is equivalent to OrderedSet(this.valueSeq()), but provided for convenience and to allow for chained expressions.
+toList()
+Converts this Iterable to a List, discarding keys.
+toList(): List<V>
+DISCUSSION
+Note: This is equivalent to List(this), but provided to allow for chained expressions.
+toStack()
+Converts this Iterable to a Stack, discarding keys. Throws if values are not hashable.
+toStack(): Stack<V>
+DISCUSSION
+Note: This is equivalent to Stack(this), but provided to allow for chained expressions.
+Conversion to Seq
+
+toSeq()
+Converts this Iterable to a Seq of the same kind (indexed, keyed, or set).
+toSeq(): Seq<K, V>
+toKeyedSeq()
+Returns a Seq.Keyed from this Iterable where indices are treated as keys.
+toKeyedSeq(): Seq.Keyed<K, V>
+DISCUSSION
+This is useful if you want to operate on an Iterable.Indexed and 
+preserve the [index, value] pairs.
+
+The returned Seq will have identical iteration order as this Iterable.
+
+Example:
+
+var indexedSeq = Immutable.Seq.of('A', 'B', 'C');
+indexedSeq.filter(v => v === 'B').toString() // Seq [ 'B' ]
+var keyedSeq = indexedSeq.toKeyedSeq();
+keyedSeq.filter(v => v === 'B').toString() // Seq { 1: 'B' }
+toIndexedSeq()
+Returns an Seq.Indexed of the values of this Iterable, discarding keys.
+toIndexedSeq(): Seq.Indexed<V>
+toSetSeq()
+Returns a Seq.Set of the values of this Iterable, discarding keys.
+toSetSeq(): Seq.Set<V>
+Iterators
+
+keys()
+An iterator of this Iterable's keys.
+keys(): Iterator<K>
+DISCUSSION
+Note: this will return an ES6 iterator which does not support 
+Immutable JS sequence algorithms. Use keySeq instead, if this is what you want.
+values()
+An iterator of this Iterable's values.
+values(): Iterator<V>
+DISCUSSION
+Note: this will return an ES6 iterator which does not support Immutable JS sequence algorithms. Use valueSeq instead, if this is what you want.
+entries()
+An iterator of this Iterable's entries as [key, value] tuples.
+entries(): Iterator<Array<any>>
+DISCUSSION
+Note: this will return an ES6 iterator which does not support Immutable JS sequence algorithms. Use entrySeq instead, if this is what you want.
+Iterables (Seq)
+
+keySeq()
+Returns a new Seq.Indexed of the keys of this Iterable, discarding values.
+keySeq(): Seq.Indexed<K>
+valueSeq()
+Returns an Seq.Indexed of the values of this Iterable, discarding keys.
+valueSeq(): Seq.Indexed<V>
+entrySeq()
+Returns a new Seq.Indexed of [key, value] tuples.
+entrySeq(): Seq.Indexed<Array<any>>
+Sequence algorithms
+
+map()
+Returns a new Iterable of the same type with values passed through a mapper function.
+map<M>(
+mapper: (value: V, key: K, iter: Iterable<K, V>) => M,
+context?: any
+): Iterable<K, M>
+EXAMPLE
+Seq({ a: 1, b: 2 }).map(x => 10 * x)
+// Seq { a: 10, b: 20 }
+filter()
+Returns a new Iterable of the same type with only the entries for which the predicate function returns true.
+filter(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq({a:1,b:2,c:3,d:4}).filter(x => x % 2 === 0)
+// Seq { b: 2, d: 4 }
+filterNot()
+Returns a new Iterable of the same type with only the entries for which the predicate function returns false.
+filterNot(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq({a:1,b:2,c:3,d:4}).filterNot(x => x % 2 === 0)
+// Seq { a: 1, c: 3 }
+reverse()
+Returns a new Iterable of the same type in reverse order.
+reverse(): Iterable<K, V>
+sort()
+Returns a new Iterable of the same type which includes the same entries, stably sorted by using a comparator.
+sort(comparator?: (valueA: V, valueB: V) => number): Iterable<K, V>
+DISCUSSION
+If a comparator is not provided, a default comparator uses < and >.
+
+comparator(valueA, valueB):
+
+Returns 0 if the elements should not be swapped.
+Returns -1 (or any negative number) if valueA comes before valueB
+Returns 1 (or any positive number) if valueA comes after valueB
+Is pure, i.e. it must always return the same value for the same pair of values.
+When sorting collections which have no defined order, their ordered equivalents will be returned. e.g. map.sort() returns OrderedMap.
+
+Seq({c: 3, a: 1, b: 2}).sort((a, b) => {
+  if (a < b) { return -1; }
+  if (a > b) { return 1; }
+  if (a === b) { return 0; }
+}).toJS();
+// { a: 1, b: 2, c: 3 }
+sortBy()
+Like sort, but also accepts a comparatorValueMapper which allows for sorting by more sophisticated means:
+sortBy<C>(
+comparatorValueMapper: (value: V, key: K, iter: Iterable<K, V>) => C,
+comparator?: (valueA: C, valueB: C) => number
+): Iterable<K, V>
+EXAMPLE
+hitters.sortBy(hitter => hitter.avgHits);
+groupBy()
+Returns a Iterable.Keyed of Iterable.Keyeds, grouped by the return value of the grouper function.
+groupBy<G>(
+grouper: (value: V, key: K, iter: Iterable<K, V>) => G,
+context?: any
+): Seq.Keyed<G, Iterable<K, V>>
+DISCUSSION
+Note: This is always an eager operation.
+
+Immutable.fromJS([{v: 0}, {v: 1}, {v: 1}, {v: 0}, {v: 1}])
+  .groupBy(x => x.get('v'))
+  // Map {0: [{v: 0},{v: 0}], 1: [{v: 1},{v: 1},{v: 1}]}
+Side effects
+
+forEach()
+The sideEffect is executed for every entry in the Iterable.
+forEach(
+sideEffect: (value: V, key: K, iter: Iterable<K, V>) => any,
+context?: any
+): number
+DISCUSSION
+Unlike Array#forEach, if any call of sideEffect returns false, the iteration will stop. Returns the number of entries iterated (including the last iteration which returned false).
+Creating subsets
+
+slice()
+Returns a new Iterable of the same type representing a portion of this Iterable from start up to but not including end.
+slice(begin?: number, end?: number): Iterable<K, V>
+DISCUSSION
+If begin is negative, it is offset from the end of the Iterable. e.g. slice(-2) returns a Iterable of the last two entries. If it is not provided the new Iterable will begin at the beginning of this Iterable.
+
+If end is negative, it is offset from the end of the Iterable. e.g. slice(0, -1) returns an Iterable of everything but the last entry. If it is not provided, the new Iterable will continue through the end of this Iterable.
+
+If the requested slice is equivalent to the current Iterable, then it will return itself.
+rest()
+Returns a new Iterable of the same type containing all entries except the first.
+rest(): Iterable<K, V>
+butLast()
+Returns a new Iterable of the same type containing all entries except the last.
+butLast(): Iterable<K, V>
+skip()
+Returns a new Iterable of the same type which excludes the first amount entries from this Iterable.
+skip(amount: number): Iterable<K, V>
+skipLast()
+Returns a new Iterable of the same type which excludes the last amount entries from this Iterable.
+skipLast(amount: number): Iterable<K, V>
+skipWhile()
+Returns a new Iterable of the same type which includes entries starting from when predicate first returns false.
+skipWhile(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq.of('dog','frog','cat','hat','god')
+  .skipWhile(x => x.match(/g/))
+// Seq [ 'cat', 'hat', 'god' ]
+skipUntil()
+Returns a new Iterable of the same type which includes entries starting from when predicate first returns true.
+skipUntil(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq.of('dog','frog','cat','hat','god')
+  .skipUntil(x => x.match(/hat/))
+// Seq [ 'hat', 'god' ]
+take()
+Returns a new Iterable of the same type which includes the first amount entries from this Iterable.
+take(amount: number): Iterable<K, V>
+takeLast()
+Returns a new Iterable of the same type which includes the last amount entries from this Iterable.
+takeLast(amount: number): Iterable<K, V>
+takeWhile()
+Returns a new Iterable of the same type which includes entries from this Iterable as long as the predicate returns true.
+takeWhile(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq.of('dog','frog','cat','hat','god')
+  .takeWhile(x => x.match(/o/))
+// Seq [ 'dog', 'frog' ]
+takeUntil()
+Returns a new Iterable of the same type which includes entries from this Iterable as long as the predicate returns false.
+takeUntil(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): Iterable<K, V>
+EXAMPLE
+Seq.of('dog','frog','cat','hat','god').takeUntil(x => x.match(/at/))
+// ['dog', 'frog']
+Combination
+
+concat()
+Returns a new Iterable of the same type with other values and iterable-like concatenated to this one.
+concat(...valuesOrIterables: any[]): Iterable<K, V>
+DISCUSSION
+For Seqs, all entries will be present in the resulting iterable, even if they have the same key.
+flatten()
+Flattens nested Iterables.
+flatten(depth?: number): Iterable<any, any>
+flatten(shallow?: boolean): Iterable<any, any>
+DISCUSSION
+Will deeply flatten the Iterable by default, returning an Iterable of the same type, but a depth can be provided in the form of a number or boolean (where true means to shallowly flatten one level). A depth of 0 (or shallow: false) will deeply flatten.
+
+Flattens only others Iterable, not Arrays or Objects.
+
+Note: flatten(true) operates on Iterable> and returns Iterable
+flatMap()
+Flat-maps the Iterable, returning an Iterable of the same type.
+flatMap<MK, MV>(
+mapper: (value: V, key: K, iter: Iterable<K, V>) => Iterable<MK, MV>,
+context?: any
+): Iterable<MK, MV>
+flatMap<MK, MV>(
+mapper: (value: V, key: K, iter: Iterable<K, V>) => any,
+context?: any
+): Iterable<MK, MV>
+DISCUSSION
+Similar to iter.map(...).flatten(true).
+Reducing a value
+
+reduce()
+Reduces the Iterable to a value by calling the reducer for every entry in the Iterable and passing along the reduced value.
+reduce<R>(
+reducer: (reduction: R, value: V, key: K, iter: Iterable<K, V>) => R,
+initialReduction?: R,
+context?: any
+): R
+SEE
+Array#reduce.
+DISCUSSION
+If initialReduction is not provided, or is null, the first item in the Iterable will be used.
+reduceRight()
+Reduces the Iterable in reverse (from the right side).
+reduceRight<R>(
+reducer: (reduction: R, value: V, key: K, iter: Iterable<K, V>) => R,
+initialReduction?: R,
+context?: any
+): R
+DISCUSSION
+Note: Similar to this.reverse().reduce(), and provided for parity with Array#reduceRight.
+every()
+True if predicate returns true for all entries in the Iterable.
+every(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): boolean
+some()
+True if predicate returns true for any entry in the Iterable.
+some(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): boolean
+join()
+Joins values together as a string, inserting a separator between each. The default separator is ",".
+join(separator?: string): string
+isEmpty()
+Returns true if this Iterable includes no values.
+isEmpty(): boolean
+DISCUSSION
+For some lazy Seq, isEmpty might need to iterate to determine emptiness. At most one iteration will occur.
+count()
+Returns the size of this Iterable.
+count(): number
+count(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any
+): number
+DISCUSSION
+Regardless of if this Iterable can describe its size lazily (some Seqs cannot), this method will always return the correct size. E.g. it evaluates a lazy Seq if necessary.
+
+If predicate is provided, then this returns the count of entries in the Iterable for which the predicate returns true.
+countBy()
+Returns a Seq.Keyed of counts, grouped by the return value of the grouper function.
+countBy<G>(
+grouper: (value: V, key: K, iter: Iterable<K, V>) => G,
+context?: any
+): Map<G, number>
+DISCUSSION
+Note: This is not a lazy operation.
+Search for value
+
+find()
+Returns the first value for which the predicate returns true.
+find(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any,
+notSetValue?: V
+): V
+findLast()
+Returns the last value for which the predicate returns true.
+findLast(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any,
+notSetValue?: V
+): V
+DISCUSSION
+Note: predicate will be called for each entry in reverse.
+findEntry()
+Returns the first [key, value] entry for which the predicate returns true.
+findEntry(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any,
+notSetValue?: V
+): Array<any>
+findLastEntry()
+Returns the last [key, value] entry for which the predicate returns true.
+findLastEntry(
+predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
+context?: any,
+notSetValue?: V
+): Array<any>
+DISCUSSION
+Note: predicate will be called for each entry in reverse.
+findKey()
+Returns the key for which the predicate returns true.
+findKey(
+predicate: (value: V, key: K, iter: Iterable.Keyed<K, V>) => boolean,
+context?: any
+): K
+findLastKey()
+Returns the last key for which the predicate returns true.
+findLastKey(
+predicate: (value: V, key: K, iter: Iterable.Keyed<K, V>) => boolean,
+context?: any
+): K
+DISCUSSION
+Note: predicate will be called for each entry in reverse.
+keyOf()
+Returns the key associated with the search value, or undefined.
+keyOf(searchValue: V): K
+lastKeyOf()
+Returns the last key associated with the search value, or undefined.
+lastKeyOf(searchValue: V): K
+max()
+Returns the maximum value in this collection. If any values are comparatively equivalent, the first one found will be returned.
+max(comparator?: (valueA: V, valueB: V) => number): V
+DISCUSSION
+The comparator is used in the same way as Iterable#sort. If it is not provided, the default comparator is >.
+
+When two values are considered equivalent, the first encountered will be returned. Otherwise, max will operate independent of the order of input as long as the comparator is commutative. The default comparator > is commutative only when types do not differ.
+
+If comparator returns 0 and either value is NaN, undefined, or null, that value will be returned.
+maxBy()
+Like max, but also accepts a comparatorValueMapper which allows for comparing by more sophisticated means:
+maxBy<C>(
+comparatorValueMapper: (value: V, key: K, iter: Iterable<K, V>) => C,
+comparator?: (valueA: C, valueB: C) => number
+): V
+EXAMPLE
+hitters.maxBy(hitter => hitter.avgHits);
+min()
+Returns the minimum value in this collection. If any values are comparatively equivalent, the first one found will be returned.
+min(comparator?: (valueA: V, valueB: V) => number): V
+DISCUSSION
+The comparator is used in the same way as Iterable#sort. If it is not provided, the default comparator is <.
+
+When two values are considered equivalent, the first encountered will be returned. Otherwise, min will operate independent of the order of input as long as the comparator is commutative. The default comparator < is commutative only when types do not differ.
+
+If comparator returns 0 and either value is NaN, undefined, or null, that value will be returned.
+minBy()
+Like min, but also accepts a comparatorValueMapper which allows for comparing by more sophisticated means:
+minBy<C>(
+comparatorValueMapper: (value: V, key: K, iter: Iterable<K, V>) => C,
+comparator?: (valueA: C, valueB: C) => number
+): V
+EXAMPLE
+hitters.minBy(hitter => hitter.avgHits);
+Comparison
+
+isSubset()
+True if iter includes every value in this Iterable.
+isSubset(iter: Iterable<any, V>): boolean
+isSubset(iter: Array<V>): boolean
+isSuperset()
+True if this Iterable includes every value in iter.
+isSuperset(iter: Iterable<any, V>): boolean
+isSuperset(iter: Array<V>): boolean
+
