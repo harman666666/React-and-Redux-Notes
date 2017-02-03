@@ -1,0 +1,1921 @@
+As described in Reducers, a Redux reducer function:
+
+Should have a signature of (previousState, action) => newState, similar to the type of function 
+you would pass to Array.prototype.reduce(reducer, ?initialValue)
+Should be "pure", which means it does not mutate its arguments, perform side effects like API 
+calls or modifying values outside of the function, or call non-pure functions like Date.now() 
+or Math.random(). This also means that updates should be done in an "immutable" fashion, 
+which means always returning new objects with the updated data, rather than directly 
+modifying the original state tree in-place.
+
+Because of these rules, it's important that the following core concepts are fully 
+understood before moving on to other specific techniques for organizing Redux reducers:
+
+Redux Reducer Basics
+
+Key concepts:
+Thinking in terms of state and state shape
+Delegating update responsibility by slice of state (reducer composition)
+Higher order reducers
+Defining reducer initial state
+Side effects
+Pure functions
+How to think in terms of combining functions
+Mutability vs immutability
+Immutably updating objects and arrays safely
+Avoiding functions and statements that mutate state
+Database structure and organization
+Splitting relational/nested data up into separate tables
+Storing a single definition for a given item
+Referring to items by IDs
+Using objects keyed by item IDs as lookup tables, and arrays of IDs to track ordering
+Associating items in relationships
+
+
+Basic Reducer Structure
+
+First and foremost, it's important to understand that your entire application 
+really only has one single reducer function: the function that you've passed into 
+createStore as the first argument. That one single reducer function ultimately 
+needs to do several things:
+
+The first time the reducer is called, the state value will be undefined. The reducer
+ needs to handle this case by supplying a default state value before handling the incoming action.
+It needs to look at the previous state and the dispatched action, and determine what 
+kind of work needs to be done
+Assuming actual changes need to occur, it needs to create new objects and arrays with 
+the updated data and return those
+If no changes are needed, it should return the existing state as-is.
+The simplest possible approach to writing reducer logic is to put everything into a 
+single function declaration, like this:
+
+function counter(state, action) {
+  if (typeof state === 'undefined') {
+    state = 0; // If state is undefined, initialize it with a default value
+  }
+
+  if (action.type === 'INCREMENT') {
+    return state + 1;
+  } 
+  else if (action.type === 'DECREMENT') {
+    return state - 1;
+  } 
+  else {
+    return state; // In case an action is passed in we don't understand
+  }
+}
+Notice that this simple function fulfills all the basic requirements. 
+It returns a default value if none exists, initializing the store; it 
+determines what sort of update needs to be done based on the type of the action, 
+and returns new values; and it returns the previous state if no work needs to be done.
+
+There are some simple tweaks that can be made to this reducer. First, 
+repeated if/else statements quickly grow tiresome, so it's very common to 
+use switch statements instead. Second, we can use ES6's default parameter 
+values to handle the initial "no existing data" case. With those changes, the reducer would look like:
+
+function counter(state = 0, action) {
+  switch (action.type) {
+    case 'INCREMENT':
+      return state + 1;
+    case 'DECREMENT':
+      return state - 1;
+    default:
+      return state;
+  }
+}
+This is the basic structure that a typical Redux reducer function uses.
+
+Basic State Shape
+
+Redux encourages you to think about your application in terms of the data you
+ need to manage. The data at any given point in time is the "state" of your application, 
+ and the structure and organization of that state is typically referred to as its "shape". 
+ The shape of your state plays a major role in how you structure your reducer logic.
+
+A Redux state usually has a plain Javascript object as the top of the state tree. 
+(It is certainly possible to have another type of data instead, such as a single number, 
+an array, or a specialized data structure, but most libraries assume that the top-level 
+value is a plain object.) The most common way to organize data within that top-level object 
+is to further divide data into sub-trees, where each top-level key represents some "domain" 
+or "slice" of related data. For example, a basic Todo app's state might look like:
+
+{
+  visibilityFilter: 'SHOW_ALL',
+  todos: [
+    {
+      text: 'Consider using Redux',
+      completed: true,
+    },
+    {
+      text: 'Keep all state in a single tree',
+      completed: false
+    }
+  ]
+}
+In this example, todos and visibilityFilter are both top-level keys in 
+the state, and each represents a "slice" of data for some particular concept.
+
+Most applications deal with multiple types of data, which can be broadly 
+divided into three categories:
+
+Domain data: data that the application needs to show, use, or 
+modify (such as "all of the Todos retrieved from the server")
+
+App state: data that is specific to the application's behavior 
+(such as "Todo #5 is currently selected", or "there is a request in progress to fetch Todos")
+
+UI state: data that represents how the UI is currently displayed 
+(such as "The EditTodo modal dialog is currently open")
+
+Because the store represents the core of your application, you 
+should define your state shape in terms of your domain data and 
+app state, not your UI component tree. As an example, a shape of 
+state.leftPane.todoList.todos would be a bad idea, because the idea of
+ "todos" is central to the whole application, not just a single part of 
+ the UI. The todos slice should be at the top of the state tree instead.
+
+There will rarely be a 1-to-1 correspondence between your UI tree and your 
+state shape. The exception to that might be if you are explicitly tracking 
+various aspects of UI data in your Redux store as well, but even then the 
+shape of the UI data and the shape of the domain data would likely be different.
+
+A typical app's state shape might look roughly like:
+
+{
+    domainData1 : {},
+    domainData2 : {},
+    appState1 : {},
+    appState2 : {},
+    ui : {
+        uiState1 : {},
+        uiState2 : {},
+    }
+}
+
+Splitting Up Reducer Logic
+
+For any meaningful application, putting all your update logic into a single reducer 
+function is quickly going to become unmaintainable. While there's no single rule for
+ how long a function should be, it's generally agreed that functions should be 
+ relatively short and ideally only do one specific thing. Because of this, it's
+  good programming practice to take pieces of code that are very long or do many 
+  different things, and break them into smaller pieces that are easier to understand.
+
+Since a Redux reducer is just a function, the same concept applies. You can split 
+some of your reducer logic out into another function, and call that new function 
+from the parent function.
+
+These new functions would typically fall into one of three categories:
+
+Small utility functions containing some reusable chunk of logic that is needed in 
+multiple places (which may or may not be actually related to the specific business logic)
+Functions for handling a specific update case, which often need parameters other 
+than the typical (state, action) pair
+Functions which handle all updates for a given slice of state. These functions do 
+generally have the typical (state, action) parameter signature
+For clarity, these terms will be used to distinguish between different types of 
+functions and different use cases:
+
+reducer: any function with the signature (state, action) -> newState 
+(ie, any function that could be used as an argument to Array.reduce)
+root reducer: the reducer function that is actually passed as the first 
+argument to createStore. This is the only part of the reducer logic that 
+must have the (state, action) -> newState signature.
+slice reducer: a reducer that is being used to handle updates to one specific 
+slice of the state tree, usually done by passing it to combineReducers
+case function: a function that is being used to handle the update logic for a 
+specific action. This may actually be a reducer function, or it may require
+ other parameters to do its work properly.
+higher-order reducer: a function that takes a reducer function as an argument, 
+and/or returns a new reducer function as a result (such as combineReducers, or redux-undo)
+The term "sub-reducer" has also been used in various discussions to mean any 
+function that is not the root reducer, although the term is not very precise.
+ Some people may also refer to some functions as "business logic" (functions 
+ that relate to application-specific behavior) or "utility functions" (generic 
+ functions that are not application-specific).
+
+Breaking down a complex process into smaller, more understandable parts is usually 
+described with the term functional decomposition. This term and concept can 
+be applied generically to any code. However, in Redux it is very common to 
+structure reducer logic using approach #3, where update logic is 
+delegated to other functions based on slice of state. Redux refers 
+to this concept as reducer composition, and it is by far the most 
+widely-used approach to structuring reducer logic. In fact, it's 
+so common that Redux includes a utility function called 
+combineReducers(), which specifically abstracts the process 
+of delegating work to other reducer functions based on slices 
+of state. However, it's important to note that it is not the 
+only pattern that can be used. In fact, it's entirely 
+possible to use all three approaches for splitting up 
+logic into functions, and usually a good idea as well. 
+The Refactoring Reducers section shows some examples of this in action.
+
+////////////////////////////////
+//////////////////////////////
+//////////////////////////////
+
+Refactoring Reducer Logic Using Functional Decomposition and Reducer Composition
+
+It may be helpful to see examples of what the different types of sub-reducer functions 
+look like and how they fit together. Let's look at a demonstration of how a large 
+single reducer function can be 
+refactored into a composition of several smaller functions.
+
+Note: this example is deliberately written in a verbose style in order to 
+illustrate the concepts and the process of refactoring, 
+rather than perfectly concise code.
+
+Initial Reducer
+
+Let's say that our initial reducer looks like this:
+
+const initialState = {
+    visibilityFilter : 'SHOW_ALL',
+    todos : []
+};
+
+
+function appReducer(state = initialState, action) {
+    switch(action.type) {
+        case 'SET_VISIBILITY_FILTER' : { 
+            return Object.assign({}, state, {
+                visibilityFilter : action.filter
+            });
+        }
+        case 'ADD_TODO' : {
+            return Object.assign({}, state, {
+                todos : state.todos.concat({
+                    id: action.id,
+                    text: action.text,
+                    completed: false
+                })
+            });
+        }
+        case 'TOGGLE_TODO' : {
+            return Object.assign({}, state, {
+                todos : state.todos.map(todo => {
+                    if (todo.id !== action.id) {
+                      return todo;
+                    }
+
+                    return Object.assign({}, todo, {
+                        completed : !todo.completed
+                    })
+                  })
+            });
+        } 
+        case 'EDIT_TODO' : {
+            return Object.assign({}, state, {
+                todos : state.todos.map(todo => {
+                    if (todo.id !== action.id) {
+                      return todo;
+                    }
+
+                    return Object.assign({}, todo, {
+                        text : action.text
+                    })
+                  })
+            });
+        } 
+        default : return state;
+    }
+}
+
+
+Extracting Utility Functions
+
+A good first step might be to break out a utility function to 
+return a new object with updated fields. There's also a 
+repeated pattern with trying to update a specific item 
+in an array that we could extract to a function:
+
+function updateObject(oldObject, newValues) {
+    // Encapsulate the idea of passing a new object as the first parameter
+    // to Object.assign to ensure we correctly copy data instead of mutating
+    return Object.assign({}, oldObject, newValues);
+}
+
+function updateItemInArray(array, itemId, updateItemCallback) {
+    const updatedItems = array.map(item => {
+        if(item.id !== itemId) {
+            // Since we only want to update one item, preserve all others as they are now
+            return item;
+        }
+
+        // Use the provided callback to create an updated item
+        const updatedItem = updateItemCallback(item);
+        return updatedItem;
+    });
+
+    return updatedItems;
+}
+
+function appReducer(state = initialState, action) {
+    switch(action.type) {
+        case 'SET_VISIBILITY_FILTER' : { 
+            return updateObject(state, {visibilityFilter : action.filter});
+        }
+        case 'ADD_TODO' : {
+            const newTodos = state.todos.concat({
+                id: action.id,
+                text: action.text,
+                completed: false
+            });
+
+            return updateObject(state, {todos : newTodos});
+        }
+        case 'TOGGLE_TODO' : {
+            const newTodos = updateItemInArray(state.todos, action.id, todo => {
+                return updateObject(todo, {completed : !todo.completed});
+            });
+
+            return updateObject(state, {todos : newTodos});
+        } 
+        case 'EDIT_TODO' : {
+            const newTodos = updateItemInArray(state.todos, action.id, todo => {
+                return updateObject(todo, {text : action.text});
+            });
+
+            return updateObject(state, {todos : newTodos});
+        } 
+        default : return state;
+    }
+}
+
+That reduced the duplication and made things a bit easier to read.
+
+Extracting Case Reducers
+
+Next, we can split each specific case into its own function:
+
+// Omitted
+function updateObject(oldObject, newValues) {}
+function updateItemInArray(array, itemId, updateItemCallback) {}
+
+
+function setVisibilityFilter(state, action) {
+    return updateObject(state, {visibilityFilter : action.filter });
+}
+
+function addTodo(state, action) {
+    const newTodos = state.todos.concat({
+        id: action.id,
+        text: action.text,
+        completed: false
+    });
+
+    return updateObject(state, {todos : newTodos});
+}
+
+function toggleTodo(state, action) {
+    const newTodos = updateItemInArray(state.todos, action.id, todo => {
+        return updateObject(todo, {completed : !todo.completed});
+    });
+
+    return updateObject(state, {todos : newTodos});
+}
+
+function editTodo(state, action) {
+    const newTodos = updateItemInArray(state.todos, action.id, todo => {
+        return updateObject(todo, {text : action.text});
+    });
+
+    return updateObject(state, {todos : newTodos});
+}
+
+function appReducer(state = initialState, action) {
+    switch(action.type) {
+        case 'SET_VISIBILITY_FILTER' : return setVisibilityFilter(state, action);
+        case 'ADD_TODO' : return addTodo(state, action);
+        case 'TOGGLE_TODO' : return toggleTodo(state, action);
+        case 'EDIT_TODO' : return editTodo(state, action);
+        default : return state;
+    }
+}
+
+Now it's very clear what's happening in each case. 
+We can also start to see some patterns emerging.
+
+Separating Data Handling by Domain
+
+Our app reducer is still aware of all the different cases for our application. 
+Let's try splitting things up so that the filter logic and the todo logic are separated:
+
+// Omitted
+function updateObject(oldObject, newValues) {}
+function updateItemInArray(array, itemId, updateItemCallback) {}
+
+
+
+function setVisibilityFilter(visibilityState, action) {
+    // Technically, we don't even care about the previous state
+    return action.filter;
+}
+
+function visibilityReducer(visibilityState = 'SHOW_ALL', action) {
+    switch(action.type) {
+        case 'SET_VISIBILITY_FILTER' : return setVisibilityFilter(visibilityState, action);
+        default : return visibilityState;
+    }
+};
+
+
+function addTodo(todosState, action) {
+    const newTodos = todosState.concat({
+        id: action.id,
+        text: action.text,
+        completed: false
+    });
+
+    return newTodos;
+}
+
+function toggleTodo(todosState, action) {
+    const newTodos = updateItemInArray(todosState, action.id, todo => {
+        return updateObject(todo, {completed : !todo.completed});
+    });
+
+    return newTodos;
+}
+
+function editTodo(todosState, action) {
+    const newTodos = updateItemInArray(todosState, action.id, todo => {
+        return updateObject(todo, {text : action.text});
+    });
+
+    return newTodos;
+}
+
+function todosReducer(todosState = [], action) {
+    switch(action.type) {
+        case 'ADD_TODO' : return addTodo(todosState, action);
+        case 'TOGGLE_TODO' : return toggleTodo(todosState, action);
+        case 'EDIT_TODO' : return editTodo(todosState, action);
+        default : return todosState;
+    }
+}
+
+function appReducer(state = initialState, action) {
+    return {
+        todos : todosReducer(state.todos, action),
+        visibilityFilter : visibilityReducer(state.visibilityFilter, action)
+    };
+}
+
+Notice that because the two "slice of state" reducers are 
+now getting only their own part of the whole state as arguments, 
+they no longer need to return complex nested state objects, and are now simpler as a result.
+
+Reducing Boilerplate
+
+We're almost done. Since many people don't like switch statements, 
+it's very common to use a function that creates a lookup table 
+of action types to case functions. We'll use the createReducer 
+function described in Reducing Boilerplate:
+
+// Omitted
+function updateObject(oldObject, newValues) {}
+function updateItemInArray(array, itemId, updateItemCallback) {}
+
+function createReducer(initialState, handlers) {
+  return function reducer(state = initialState, action) {
+    if (handlers.hasOwnProperty(action.type)) {
+      return handlers[action.type](state, action)
+    } else {
+      return state
+    }
+  }
+}
+
+
+// Omitted
+function setVisibilityFilter(visibilityState, action) {}
+
+const visibilityReducer = createReducer('SHOW_ALL', {
+    'SET_VISIBILITY_FILTER' : setVisibilityFilter
+});
+
+// Omitted
+function addTodo(todosState, action) {}
+function toggleTodo(todosState, action) {}
+function editTodo(todosState, action) {}
+
+const todosReducer = createReducer([], {
+    'ADD_TODO' : addTodo,
+    'TOGGLE_TODO' : toggleTodo,
+    'EDIT_TODO' : editTodo
+});
+
+function appReducer(state = initialState, action) {
+    return {
+        todos : todosReducer(state.todos, action),
+        visibilityFilter : visibilityReducer(state.visibilityFilter, action)
+    };
+}
+
+
+Combining Reducers by Slice
+
+As our last step, we can now use Redux's built-in combineReducers 
+utility to handle the "slice-of-state" logic for our top-level
+ app reducer. Here's the final result:
+
+// Reusable utility functions
+
+function updateObject(oldObject, newValues) {
+    // Encapsulate the idea of passing a new object as the first parameter
+    // to Object.assign to ensure we correctly copy data instead of mutating
+    return Object.assign({}, oldObject, newValues);
+}
+
+function updateItemInArray(array, itemId, updateItemCallback) {
+    const updatedItems = array.map(item => {
+        if(item.id !== itemId) {
+            // Since we only want to update one item, preserve all others as they are now
+            return item;
+        }
+
+        // Use the provided callback to create an updated item
+        const updatedItem = updateItemCallback(item);
+        return updatedItem;
+    });
+
+    return updatedItems;
+}
+
+function createReducer(initialState, handlers) {
+  return function reducer(state = initialState, action) {
+    if (handlers.hasOwnProperty(action.type)) {
+      return handlers[action.type](state, action)
+    } else {
+      return state
+    }
+  }
+}
+
+
+// Handler for a specific case ("case reducer")
+function setVisibilityFilter(visibilityState, action) {
+    // Technically, we don't even care about the previous state
+    return action.filter;
+}
+
+// Handler for an entire slice of state ("slice reducer")
+const visibilityReducer = createReducer('SHOW_ALL', {
+    'SET_VISIBILITY_FILTER' : setVisibilityFilter
+});
+
+// Case reducer
+function addTodo(todosState, action) {
+    const newTodos = todosState.concat({
+        id: action.id,
+        text: action.text,
+        completed: false
+    });
+
+    return newTodos;
+}
+
+// Case reducer
+function toggleTodo(todosState, action) {
+    const newTodos = updateItemInArray(todosState, action.id, todo => {
+        return updateObject(todo, {completed : !todo.completed});
+    });
+
+    return newTodos;
+}
+
+// Case reducer
+function editTodo(todosState, action) {
+    const newTodos = updateItemInArray(todosState, action.id, todo => {
+        return updateObject(todo, {text : action.text});
+    });
+
+    return newTodos;
+}
+
+// Slice reducer
+const todosReducer = createReducer([], {
+    'ADD_TODO' : addTodo,
+    'TOGGLE_TODO' : toggleTodo,
+    'EDIT_TODO' : editTodo
+});
+
+// "Root reducer"
+const appReducer = combineReducers({
+    visibilityFilter : visibilityReducer,
+    todos : todosReducer
+});
+
+We now have examples of several kinds of split-up reducer 
+functions: helper utilities like updateObject and createReducer, 
+handlers for specific cases like setVisibilityFilter and addTodo, 
+and slice-of-state handlers like visibilityReducer and todosReducer. 
+We also can see that appReducer is an example of a "root reducer".
+
+Although the final result in this example is noticeably longer than the 
+original version, this is primarily due to the extraction of the utility 
+functions, the addition of comments, and some deliberate verbosity for the 
+sake of clarity, such as separate return statements. Looking at each 
+function individually, the amount of responsibility is now smaller, 
+and the intent is hopefully clearer. Also, in a real application, these 
+functions would probably then be split into separate files such as 
+reducerUtilities.js, visibilityReducer.js, todosReducer.js, and rootReducer.js.
+
+
+/////////////////////////////////
+////////////////////////////////
+////////////////////////////////
+
+Concepts with combineReducers
+
+The most common state shape for a Redux app is a plain Javascript object containing 
+"slices" of domain-specific data at each top-level key. Similarly, the most common 
+approach to writing reducer logic for that state shape is to have "slice reducer" functions, 
+each with the same (state, action) signature, and each responsible for managing all 
+updates to that specific slice of state. Multiple slice reducers can respond to the same action, 
+independently update their own slice as needed, and the updated slices are combined into the 
+new state object.
+
+Because this pattern is so common, Redux provides the combineReducers utility to implement that behavior. 
+It is an example of a higher-order reducer, which takes an object full of slice reducer functions, 
+and returns a new reducer function.
+
+There are several important ideas to be aware of when using combineReducers:
+
+First and foremost, combineReducers is simply a utility function to simplify the most common
+ use case when writing Redux reducers. You are not required to use it in your own application, 
+ and it does not handle every possible scenario. It is entirely possible to write reducer 
+ logic without using it, and it is quite common to need to write custom reducer logic for 
+ cases that combineReducer does not handle. (See Beyond combineReducers for examples and suggestions.)
+While Redux itself is not opinionated about how your state is organized, combineReducers 
+enforces several rules to help users avoid common errors. (See combineReducers for details.)
+One frequently asked question is whether Redux "calls all reducers" when dispatching an 
+action. Since there really is only one root reducer function, the default answer is "no, 
+it does not". However, combineReducers has specific behavior that does work that way. In 
+order to assemble the new state tree, combineReducers will call each slice reducer with 
+its current slice of state and the current action, giving the slice reducer a chance to 
+respond and update its slice of state if needed. So, in that sense, using combineReducers 
+does "call all reducers", or at least all of the slice reducers it is wrapping.
+You can use it at all levels of your reducer structure, not just to create the root reducer. 
+It's very common to have multiple combined reducers in various places, which are composed 
+together to create the root reducer.
+
+
+Defining State Shape
+
+There are two ways to define the initial shape and contents of your store's state. First, 
+the createStore function can take preloadedState as its second argument. This 
+is primarily intended for initializing the store with state that was previously 
+persisted elsewhere, such as the browser's localStorage. The other way is for the 
+root reducer to return the initial state value when the state argument is undefined. 
+These two approaches are described in more detail in Initializing State, 
+but there are some additional concerns to be aware of when using combineReducers.
+
+combineReducers takes an object full of slice reducer functions, and creates a 
+function that outputs a corresponding state object with the same keys. This means that 
+if no preloaded state is provided to createStore, the naming of the keys in the 
+input slice reducer object will define the naming of the keys in the output state object.
+The correlation between these names is not always apparent, especially when 
+using ES6 features such as default module exports and object literal shorthands.
+
+Here's an example of how use of ES6 object literal shorthand with combineReducers can define the state shape:
+
+// reducers.js
+export default theDefaultReducer = (state = 0, action) => state;
+
+export const firstNamedReducer = (state = 1, action) => state;
+
+export const secondNamedReducer = (state = 2, action) => state;
+
+
+// rootReducer.js
+import {combineReducers, createStore} from "redux";
+
+import theDefaultReducer, {firstNamedReducer, secondNamedReducer} from "./reducers";
+
+// Use ES6 object literal shorthand syntax to define the object shape
+const rootReducer = combineReducers({
+    theDefaultReducer,
+    firstNamedReducer,
+    secondNamedReducer
+});
+
+const store = createStore(rootReducer);
+console.log(store.getState());
+// {theDefaultReducer : 0, firstNamedReducer : 1, secondNamedReducer : 2}
+
+Notice that because we used the ES6 shorthand for defining an object literal, 
+the key names in the resulting state are the same as the variable names from the 
+imports. This may not always be the desired behavior, and is often a cause of 
+confusion for those who aren't as familiar with ES6 syntax.
+
+Also, the resulting names are a bit odd. It's generally not a good practice 
+to actually include words like "reducer" in your state key names - the 
+keys should simply reflect the domain or type of data they hold. This 
+means we should either explicitly specify the names of the keys in the slice 
+reducer object to define the keys in the output state object, or carefully 
+rename the variables for the imported slice reducers to set up the keys
+when using the shorthand object literal syntax.
+
+A better usage might look like:
+
+import {combineReducers, createStore} from "redux";
+
+// Rename the default import to whatever name we want. We can also rename a named import.
+
+import defaultState, {firstNamedReducer, secondNamedReducer as secondState} from "./reducers";
+
+const rootReducer = combineReducers({
+    defaultState,                   // key name same as the carefully renamed default export
+    firstState : firstNamedReducer, // specific key name instead of the variable name
+    secondState,                    // key name same as the carefully renamed named export
+});
+
+const reducerInitializedStore = createStore(rootReducer);
+console.log(reducerInitializedStore.getState());
+// {defaultState : 0, firstState : 1, secondState : 2}
+
+This state shape better reflects the data involved, 
+because we took care to set up the keys we passed to combineReducers.
+
+//////////////////////////////////////////////
+//////////////////////////////////////////////
+//////////////////////////////////////////////
+BEYONG COMBINE REDUCERS
+Once you go past the core use case for combineReducers, it's time to use more 
+"custom" reducer logic, whether it be specific logic for a one-off use case, 
+or a reusable function that could be widely shared. 
+
+
+Using slice reducers with Immutable.js objects
+
+Since combineReducers currently only works with plain Javascript objects, 
+an application that uses an Immutable.js Map object for the top of its state 
+tree could not use combineReducers to manage that Map. Since many developers 
+do use Immutable.js, there are a number of published utilities that provide 
+equivalent functionality, such as redux-immutable. This package provides its 
+own implementation of combineReducers that knows how to iterate over an Immutable
+ Map instead of a plain Javascript object.
+
+
+Similarly, if sliceReducerA happens to need some data from sliceReducerB's slice of
+ state in order to handle a particular action, or sliceReducerB happens to 
+ need the entire state as an argument, combineReducers does not handle that itself. 
+ This could be resolved by writing a custom function that knows to pass the needed 
+ data as an additional argument in those specific cases, such as:
+
+ function combinedReducer(state, action) {
+    switch(action.type) {
+        case "A_TYPICAL_ACTION" : {
+            return {
+                a : sliceReducerA(state.a, action),
+                b : sliceReducerB(state.b, action)
+            };
+        }
+        case "SOME_SPECIAL_ACTION" : {
+            return {
+                // specifically pass state.b as an additional argument
+                a : sliceReducerA(state.a, action, state.b),
+                b : sliceReducerB(state.b, action)
+            }        
+        }
+        case "ANOTHER_SPECIAL_ACTION" : {
+            return {
+                a : sliceReducerA(state.a, action),
+                // specifically pass the entire state as an additional argument
+                b : sliceReducerB(state.b, action, state)
+            }         
+        }    
+        default: return state;
+    }
+}
+
+Another alternative to the "shared-slice updates" issue would be to simply put more data into the action. 
+This is easily accomplished using thunk functions or a similar approach, per this example:
+
+function someSpecialActionCreator() {
+    return (dispatch, getState) => {
+        const state = getState();
+        const dataFromB = selectImportantDataFromB(state);
+
+        dispatch({
+            type : "SOME_SPECIAL_ACTION",
+            payload : {
+                dataFromB
+            }
+        });
+    }
+}
+
+Because the data from B's slice is already in the action, the parent reducer 
+doesn't have to do anything special to make that data available to sliceReducerA.
+
+A third approach would be to use the reducer generated by combineReducers to handle 
+the "simple" cases where each slice reducer can update itself independently, but 
+also use another reducer to handle the "special" cases where data needs to be 
+shared across slices. Then, a wrapping function could call both of those 
+reducers in turn to generate the final result:
+
+const combinedReducer = combineReducers({
+    a : sliceReducerA,
+    b : sliceReducerB
+}); 
+
+function crossSliceReducer(state, action) {
+    switch(action.type) {
+        case "SOME_SPECIAL_ACTION" : {
+            return {
+                // specifically pass state.b as an additional argument
+                a : handleSpecialCaseForA(state.a, action, state.b),
+                b : sliceReducerB(state.b, action)
+            }        
+        }
+        default : return state;
+    }
+}
+
+function rootReducer(state, action) {
+    const intermediateState = combinedReducer(state, action);
+    const finalState = crossSliceReducer(intermediateState, action);
+    return finalState;
+}
+
+As it turns out, there's a useful utility called reduce-reducers that can make that
+ process easier. It simply takes multiple reducers and runs reduce() on them, passing 
+ the intermediate state values to the next reducer in line:
+
+// Same as the "manual" rootReducer above
+const rootReducer = reduceReducers(combinedReducers, crossSliceReducer);
+
+Note that if you use reduceReducers, you should make sure that the first reducer 
+in the list is able to define the initial state, since the later reducers will
+ generally assume that the entire state already exists and not try to provide defaults.
+
+Again, it's important to understand that Redux reducers are just functions. While 
+combineReducers is useful, it's just one tool in the toolbox. 
+Functions can contain conditional logic other than switch statements, 
+functions can be composed to wrap each other, and functions can call other 
+functions. Maybe you need one of your slice reducers to be able to reset its state, 
+and to only respond to specific actions overall. You could do:
+
+const undoableFilteredSliceA = compose(undoReducer, filterReducer("ACTION_1", "ACTION_2"), sliceReducerA);
+const rootReducer = combineReducers({
+    a : undoableFilteredSliceA,
+    b : normalSliceReducerB
+});
+
+Note that combineReducers doesn't know or care that there's anything special about the reducer 
+function that's responsible for managing a. We didn't need to modify 
+combineReducers to specifically know how to undo things - we just built 
+up the pieces we needed into a new composed function.
+
+Also, while combineReducers is the one reducer utility function that's built 
+into Redux, there's a wide variety of third-party reducer utilities that have 
+published for reuse. The Redux Addons Catalog lists many of the third-party utilities
+ that are available. Or, if none of the published utilities solve your use case, 
+ you can always write a function yourself that does just exactly what you need.
+
+/////////////////////////////
+/////////////////////////////
+/////////////////////////////
+
+Many applications deal with data that is nested or relational in nature. 
+For example, a blog editor could have many Posts, each Post could have many Comments, 
+and both Posts and Comments would be written by a User. Data for this kind of 
+application might look like:
+
+const blogPosts = [
+    {
+        id : "post1",
+        author : {username : "user1", name : "User 1"},
+        body : "......",
+        comments : [
+            {
+                id : "comment1",
+                author : {username : "user2", name : "User 2"},
+                comment : ".....",
+            },
+            {
+                id : "comment2",
+                author : {username : "user3", name : "User 3"},
+                comment : ".....",
+            }
+        ]    
+    },
+    {
+        id : "post2",
+        author : {username : "user2", name : "User 2"},
+        body : "......",
+        comments : [
+            {
+                id : "comment3",
+                author : {username : "user3", name : "User 3"},
+                comment : ".....",
+            },
+            {
+                id : "comment4",
+                author : {username : "user1", name : "User 1"},
+                comment : ".....",
+            },
+            {
+                id : "comment5",
+                author : {username : "user3", name : "User 3"},
+                comment : ".....",
+            }
+        ]    
+    }
+    // and repeat many times
+]
+
+Notice that the structure of the data is a bit complex, and some of the data is repeated.
+ This is a concern for several reasons:
+
+When a piece of data is duplicated in several places, it becomes harder to 
+make sure that it is updated appropriately.
+Nested data means that the corresponding reducer logic has to be more nested 
+or more complex. In particular, trying to update a deeply nested field can 
+become very ugly very fast. Since immutable data updates require all ancestors
+ in the state tree to be copied and updated as well, and new object references 
+ will cause connected UI components to re-render, an update to a deeply nested 
+ data object could force totally unrelated UI components to re-render even if 
+ the data they're displaying hasn't actually changed.
+Because of this, the recommended approach to managing relational or nested data 
+in a Redux store is to treat a portion of your store as if it were a database, 
+and keep that data in a normalized form.
+
+The basic concepts of normalizing data are:
+
+Each type of data gets its own "table" in the state.
+Each "data table" should store the individual items in an object, with the IDs 
+of the items as keys and the items themselves as the values.
+Any references to individual items should be done by storing the item's ID.
+Arrays of IDs should be used to indicate ordering.
+
+An example of a normalized state structure for the blog example above might look like:
+
+{
+    posts : {
+        byId : {
+            "post1" : {
+                id : "post1",
+                author : "user1",
+                body : "......",
+                comments : ["comment1", "comment2"]    
+            },
+            "post2" : {
+                id : "post2",
+                author : "user2",
+                body : "......",
+                comments : ["comment3", "comment4", "comment5"]    
+            }
+        }
+        allIds : ["post1", "post2"]
+    },
+    comments : {
+        byId : {
+            "comment1" : {
+                id : "comment1",
+                author : "user2",
+                comment : ".....",
+            },
+            "comment2" : {
+                id : "comment2",
+                author : "user3",
+                comment : ".....",
+            },
+            "comment3" : {
+                id : "comment3",
+                author : "user3",
+                comment : ".....",
+            },
+            "comment4" : {
+                id : "comment4",
+                author : "user1",
+                comment : ".....",
+            },
+            "comment5" : {
+                id : "comment5",
+                author : "user3",
+                comment : ".....",
+            },
+        },
+        allIds : ["comment1", "comment2", "comment3", "commment4", "comment5"]
+    },
+    users : {
+        byId : {
+            "user1" : {
+                username : "user1",
+                name : "User 1",
+            }
+            "user2" : {
+                username : "user2",
+                name : "User 2",
+            }
+            "user3" : {
+                username : "user3",
+                name : "User 3",
+            }
+        },
+        allIds : ["user1", "user2", "user3"]
+    }
+}
+
+This state structure is much flatter overall. Compared to the original nested format, 
+this is an improvement in several ways:
+
+Because each item is only defined in one place, we don't have to try to make 
+changes in multiple places if that item is updated.
+The reducer logic doesn't have to deal with deep levels of nesting, so 
+it will probably be much simpler.
+The logic for retrieving or updating a given item is now fairly simple 
+and consistent. Given an item's type and its ID, we can directly look 
+it up in a couple simple steps, without having to dig through other 
+objects to find it.
+Since each data type is separated, an update like changing the text of a 
+comment would only require new copies of the "comments > byId > comment" 
+portion of the tree. This will generally mean fewer portions of the UI 
+that need to update because their data has changed. 
+
+A typical application will likely have a mixture of relational data and non-relational data.
+ While there is no single rule for exactly how those different types of data should be 
+ organized, one common pattern is to put the relational "tables" under a common 
+ parent key, such as "entities". A state structure using this approach might look like:
+
+{
+    simpleDomainData1: {....},
+    simpleDomainData2: {....}
+    entities : {
+        entityType1 : {....},
+        entityType2 : {....}
+    }
+    ui : {
+        uiSection1 : {....},
+        uiSection2 : {....}
+    }
+}
+
+This could be expanded in a number of ways. For example, an application that does a lot of
+ editing of entities might want to keep two sets of "tables" in the state, one for the 
+ "current" item values and one for the "work-in-progress" item values. When an item is 
+ edited, its values could be copied into the "work-in-progress" section, and any 
+ actions that update it would be applied to the "work-in-progress" copy, allowing the 
+ editing form to be controlled by that set of data while another part of the UI still 
+ refers to the original version. "Resetting" the edit form would simply require removing 
+ the item from the "work-in-progress" section and re-copying the original data from 
+ "current" to "work-in-progress", while "applying" the edits would involve copying the 
+  values from the "work-in-progress" section to the "current" section.
+
+  Because we're treating a portion of our Redux store as a "database", many of 
+  the principles of database design also apply here as well. For example, if we 
+  have a many-to-many relationship, we can model that using an intermediate table 
+  that stores the IDs of the corresponding items (often known as a "join table" 
+  or an "associative table"). For consistency, we would probably also want to 
+  use the same byId and allIds approach that we used for the actual item tables, like this:
+
+  {
+    entities: {
+        authors : { byId : {}, allIds : [] },
+        books : { byId : {}, allIds : [] },
+        authorBook : {
+            byId : {
+                1 : {
+                    id : 1,
+                    authorId : 5,
+                    bookId : 22
+                },
+                2 : {
+                    id : 2,
+                    authorId : 5,
+                    bookId : 15,
+                }
+                3 : {
+                    id : 3,
+                    authorId : 42,
+                    bookId : 12
+                }
+            },
+            allIds : [1, 2, 3]
+
+        }
+    }
+}
+
+Operations like "Look up all books by this author" can 
+then accomplished with a single loop over the join table.
+
+Normalizing Nested Data
+
+Because APIs frequently send back data in a nested form, 
+that data needs to be transformed into a normalized shape before 
+it can be included in the state tree. The Normalizr library is usually 
+used for this task. You can define schema types and relations, feed the 
+schema and the response data to Normalizr, and it will output a normalized 
+transformation of the response. That output can then be included in an 
+action and used to update the store.
+
+As mentioned in Normalizing State Shape, the Normalizr library is frequently 
+used to transform nested response data into a normalized shape suitable for 
+integration into the store. However, that doesn't address the issue of executing 
+further updates to that normalized data as it's being used elsewhere in the application. 
+There are a variety of different approaches that you can use, based on your own preference.
+
+One approach is to merge the contents of the action in to the existing state. 
+In this case, we need to do a deep recursive merge, not just a shallow copy.
+ The Lodash merge function can handle this for us:
+
+import merge from "lodash/object/merge";
+
+function commentsById(state = {}, action) {
+    switch(action.type) {
+        default : {
+           if(action.entities && action.entities.comments) {
+               return merge({}, state, action.entities.comments.byId);
+           }
+           return state;
+        }
+    }
+}
+
+This requires the least amount of work on the reducer side, but does require 
+that the action creator potentially do a fair amount of work to organize the 
+data into the correct shape before the action is dispatched. It also doesn't
+ handle trying to delete an item.
+
+ If we have a nested tree of slice reducers, each slice reducer will 
+ need to know how to respond to this action appropriately. We will need 
+ to include all the relevant data in the action. We need to update the
+  correct Post object with the comment's ID, create a new Comment object 
+  using that ID as a key, and include the Comment's ID in the list of all 
+  Comment IDs. Here's how the pieces for this might fit together:
+
+// actions.js
+function addComment(postId, commentText) {
+    // Generate a unique ID for this comment
+    const commentId = generateId("comment");
+
+    return {
+        type : "ADD_COMMENT",
+        payload : {
+            postId,
+            commentId,
+            commentText
+        }
+    };
+}
+
+
+// reducers/posts.js
+function addComment(state, action) {
+    const {payload} = action;
+    const {postId, commentId} = payload;
+
+    // Look up the correct post, to simplify the rest of the code
+    const post = state[postId];
+
+    return {
+        ...state,
+        // Update our Post object with a new "comments" array
+        [postId] : {
+             ...post,
+             comments : post.comments.concat(commentId)             
+        }
+    };
+}
+
+function postsById(state = {}, action) {
+    switch(action.type) {
+        case "ADD_COMMENT" : return addComment(state, action);
+        default : return state;
+    }
+}
+
+function allPosts(state = [], action) {
+    // omitted - no work to be done for this example
+}
+
+const postsReducer = combineReducers({
+    byId : postsById,
+    allIds : allPosts
+});
+
+
+// reducers/comments.js
+function addCommentEntry(state, action) {
+    const {payload} = action;
+    const {commentId, commentText} = payload;
+
+    // Create our new Comment object
+    const comment = {id : commentId, text : commentText};
+
+    // Insert the new Comment object into the updated lookup table
+    return {
+        ...state,
+        [commentId] : comment
+    };
+}
+
+function commentsById(state = {}, action) {
+    switch(action.type) {
+        case "ADD_COMMENT" : return addCommentEntry(state, action);
+        default : return state;
+    }
+}
+
+
+function addCommentId(state, action) {
+    const {payload} = action;
+    const {commentId} = payload;
+    // Just append the new Comment's ID to the list of all IDs
+    return state.concat(commentId);
+}
+
+function allComments(state = [], action) {
+    switch(action.type) {
+        case "ADD_COMMENT" : return addCommentId(state, action);
+        default : return state;
+    }
+}
+
+const commentsReducer = combineReducers({
+    byId : commentsById,
+    allIds : allComments
+});
+
+The example is a bit long, because it's showing how all the different slice 
+reducers and case reducers fit together. Note that the delegation involved here.
+ The postsById slice reducer delegates the work for this case to addComment, 
+ which inserts the new Comment's ID into the correct Post item. Meanwhile, 
+ both the commentsById and allComments slice reducers have their own case 
+ reducers, which update the Comments lookup table and list of all Comment
+  IDs appropriately.
+
+Task-Based Updates
+
+Since reducers are just functions, there's an infinite number of ways to split up this logic. 
+While using slice reducers is obviously the most common, it's also possible to 
+organize behavior in a more task-oriented structure. Because this will often 
+involve more nested updates, you may want to use an immutable update utility
+ library like dot-prop-immutable or object-path-immutable to simplify the 
+ update statements. Here's an example of what that might look like:
+
+import posts from "./postsReducer";
+import comments from "./commentsReducer";
+import dotProp from "dot-prop-immutable";
+import {combineReducers} from "redux";
+import reduceReducers from "reduce-reducers";
+
+const combinedReducer = combineReducers({
+    posts,
+    comments
+});
+
+
+function addComment(state, action) {
+    const {payload} = action;
+    const {postId, commentId, commentText} = payload;
+
+    // State here is the entire combined state
+    const updatedWithPostState = dotProp.set(
+        state, 
+        `posts.byId.${postId}.comments`, 
+        comments => comments.concat(commentId)
+    );
+
+    const updatedWithCommentsTable = dotProp.set(
+        updatedWithPostState, 
+        `comments.byId.${commentId}`,
+        {id : commentId, text : commentText}
+    );
+
+    const updatedWithCommentsList = dotProp.set(
+        updatedWithCommentsTable,
+        `comments.allIds`,
+        allIds => allIds.concat(commentId);
+    );
+
+    return updatedWithCommentsList;
+}
+
+const featureReducers = createReducer({}, {
+    ADD_COMMENT : addComment,
+};
+
+const rootReducer = reduceReducers(
+    combinedReducer,
+    featureReducers
+);
+
+This approach makes it very clear what's happening for the "ADD_COMMENTS" 
+case, but it does require nested updating logic, and some specific 
+knowledge of the state tree shape. Depending on how you want to 
+compose your reducer logic, this may or may not be desired.
+
+Redux-ORM
+
+The Redux-ORM library provides a very useful abstraction layer for 
+managing normalized data in a Redux store. It allows you to declare 
+Model classes and define relations between them. It can then generate 
+the empty "tables" for your data types, act as a specialized selector 
+tool for looking up the data, and perform immutable updates on that data.
+
+There's a couple ways Redux-ORM can be used to perform updates. 
+First, the Redux-ORM docs suggest defining reducer functions on each 
+Model subclass, then including the auto-generated combined reducer function into your store:
+
+// models.js
+import {Model, many, Schema} from "redux-orm";
+
+export class Post extends Model {
+  static get fields() {
+    return {
+      // Define a many-sided relation - one Post can have many Comments, 
+      // at a field named "comments"
+      comments : many("Comment") 
+    };
+  }
+
+  static reducer(state, action, Post) {
+    switch(action.type) {
+      case "CREATE_POST" : {
+        // Queue up the creation of a Post instance
+        Post.create(action.payload);
+        break;
+      }
+      case "ADD_COMMENT" : {
+        const {payload} = action;
+        const {postId, commentId} = payload;
+        // Queue up the addition of a relation between this Comment ID 
+        // and this Post instance
+        Post.withId(postId).comments.add(commentId);
+        break;
+      }
+    }
+
+    // Redux-ORM will automatically apply queued updates after this returns
+  }
+}
+Post.modelName = "Post";
+
+export class Comment extends Model {
+  static get fields() {
+    return {};
+  }
+
+  static reducer(state, action, Comment) {
+    switch(action.type) {
+      case "ADD_COMMENT" : {
+        const {payload} = action;
+        const {commentId, commentText} = payload;
+
+        // Queue up the creation of a Comment instance
+        Comment.create({id : commentId, text : commentText});
+        break;
+      }   
+    }
+
+    // Redux-ORM will automatically apply queued updates after this returns
+  }
+}
+Comment.modelName = "Comment";
+
+// Create a Schema instance, and hook up the Post and Comment models
+export const schema = new Schema();
+schema.register(Post, Comment);
+
+
+// main.js
+import { createStore, combineReducers } from 'redux'
+import {schema} from "./models";
+
+const rootReducer = combineReducers({
+  // Insert the auto-generated Redux-ORM reducer.  This will
+  // initialize our model "tables", and hook up the reducer
+  // logic we defined on each Model subclass
+  entities : schema.reducer()
+});
+
+// Dispatch an action to create a Post instance
+store.dispatch({
+  type : "CREATE_POST",
+  payload : {
+    id : 1,
+    name : "Test Post Please Ignore" 
+  }
+});
+
+// Dispatch an action to create a Comment instance as a child of that Post
+store.dispatch({
+  type : "ADD_COMMENT",
+  payload : {
+    postId : 1,
+    commentId : 123,
+    commentText : "This is a comment"
+  }
+});
+
+The Redux-ORM library maintains an internal queue of updates to be applied. 
+Those updates are then applied immutably, simplifying the update process.
+
+Another variation on this is to use Redux-ORM as an abstraction layer within a single case reducer:
+
+import {schema} from "./models";
+
+// Assume this case reducer is being used in our "entities" slice reducer, 
+// and we do not have reducers defined on our Redux-ORM Model subclasses
+function addComment(entitiesState, action) {
+    const session = schema.from(entitiesState);
+    const {Post, Comment} = session;
+    const {payload} = action;
+    const {postId, commentId, commentText} = payload;
+
+    const post = Post.withId(postId);
+    post.comments.add(commentId);
+
+    Comment.create({id : commentId, text : commentText});
+
+    return session.reduce();
+}
+
+Overall, Redux-ORM provides a very useful set of abstractions for defining 
+relations between data types, creating the "tables" in our state, retrieving 
+and denormalizing relational data, and applying immutable updates to relational data.
+
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////
+
+Reusing Reducer Logic
+
+As an application grows, common patterns in reducer logic will start to emerge. 
+You may find several parts of your reducer logic doing the same kinds of work for 
+different types of data, and want to reduce duplication by reusing the same common 
+logic for each data type. Or, you may want to have multiple "instances" of a certain 
+type of data being handled in the store. However, the global structure of a Redux 
+store comes with some trade-offs: it makes it easy to track the overall state of an application,
+ but can also make it harder to "target" actions that need to update a specific piece of 
+ state, particularly if you are using combineReducers.
+
+As an example, let's say that we want to track multiple counters in our 
+application, named A, B, and C. We define our initial counter reducer,
+ and we use combineReducers to set up our state:
+
+function counter(state = 0, action) {
+    switch (action.type) {
+        case 'INCREMENT':
+            return state + 1;
+        case 'DECREMENT':
+            return state - 1;
+        default:
+            return state;
+    }
+}
+
+const rootReducer = combineReducers({
+    counterA : counter,
+    counterB : counter,
+    counterC : counter
+});
+
+Unfortunately, this setup has a problem. Because combineReducers 
+will call each slice reducer with the same action, dispatching {type : 'INCREMENT'} 
+will actually cause all three counter values to be incremented, not just one of them. 
+We need some way to wrap the counter logic so that we can ensure 
+that only the counter we care about is updated.
+
+Customizing Behavior with Higher-Order Reducers
+
+As defined in Splitting Reducer Logic, a higher-order reducer is a function that 
+takes a reducer function as an argument, and/or returns a new reducer
+ function as a result. It can also be viewed as a "reducer factory". 
+ combineReducers is one example of a higher-order reducer. We can use this 
+ attern to create specialized versions of our own reducer functions, 
+ with each version only responding to specific actions.
+
+The two most common ways to specialize a reducer are to generate 
+new action constants with a given prefix or suffix, or to attach additional
+ info inside the action object. Here's what those might look like:
+
+function createCounterWithNamedType(counterName = '') {
+    return function counter(state = 0, action) {
+        switch (action.type) {
+            case `INCREMENT_${counterName}`:
+                return state + 1;
+            case `DECREMENT_${counterName}`:
+                return state - 1;
+            default:
+                return state;
+        }
+    }
+}
+
+function createCounterWithNameData(counterName = '') {
+    return function counter(state = 0, action) {
+        const {name} = action;
+        if(name !== counterName) return state;
+
+        switch (action.type) {
+            case `INCREMENT`:
+                return state + 1;
+            case `DECREMENT`:
+                return state - 1;
+            default:
+                return state;
+        }
+    }
+}
+
+We should now be able to use either of these to generate our specialized counter reducers, 
+and then dispatch actions that will affect the portion of the state that we care about:
+
+const rootReducer = combineReducers({
+    counterA : createCounterWithNamedType('A'),
+    counterB : createCounterWithNamedType('B'),
+    counterC : createCounterWithNamedType('C'),
+});
+
+store.dispatch({type : 'INCREMENT_B'});
+console.log(store.getState());
+// {counterA : 0, counterB : 1, counterC : 0}
+
+We could also vary the approach somewhat, and create a more 
+generic higher-order reducer that accepts both a given reducer function and a name or identifier:
+
+function counter(state = 0, action) {
+    switch (action.type) {
+        case 'INCREMENT':
+            return state + 1;
+        case 'DECREMENT':
+            return state - 1;
+        default:
+            return state;
+    }
+}
+
+function createNamedWrapperReducer(reducerFunction, reducerName) {
+    return (state, action) => {
+        const {name} = action;
+        const isInitializationCall = state === undefined;
+        if(name !== reducerName && !isInitializationCall) return state;
+
+        return reducerFunction(state, action);    
+    }
+}
+
+const rootReducer = combineReducers({
+    counterA : createNamedWrapperReducer(counter, 'A'),
+    counterB : createNamedWrapperReducer(counter, 'B'),
+    counterC : createNamedWrapperReducer(counter, 'C'),
+});
+
+You could even go as far as to make a generic filtering higher-order reducer:
+
+function createFilteredReducer(reducerFunction, reducerPredicate) {
+    return (state, action) => {
+        const isInitializationCall = state === undefined;
+        const shouldRunWrappedReducer = reducerPredicate(action) || isInitializationCall;
+        return shouldRunWrappedReducer ? reducerFunction(state, action) : state;
+    }
+}
+
+const rootReducer = combineReducers({
+    // check for suffixed strings
+    counterA : createFilteredReducer(counter, action => action.type.endsWith('_A')),
+    // check for extra data in the action
+    counterB : createFilteredReducer(counter, action => action.name === 'B'),
+    // respond to all 'INCREMENT' actions, but never 'DECREMENT'
+    counterC : createFilteredReducer(counter, action => action.type === 'INCREMENT')
+};
+
+These basic patterns allow you to do things like having multiple instances 
+of a smart connected component within the UI, or reuse common logic
+ for generic capabilities such as pagination or sorting.
+
+
+/////////////////////////////////////////
+/////////////////////////////////////////
+/////////////////////////////////////////
+
+Initializing State
+
+There are two main ways to initialize state for your application. 
+The createStore method can accept an optional preloadedState value 
+as its second argument. Reducers can also specify an initial value 
+by looking for an incoming state argument that is undefined, and 
+returning the value they'd like to use as a default. This can either 
+be done with an explicit check inside the reducer, or by using the 
+ES6 default argument value syntax: function myReducer(state = someDefaultValue, action).
+
+It's not always immediately clear how these two approaches 
+interact. Fortunately, the process does follow some predictable rules. Here's how the pieces fit together.
+
+Summary
+
+Without combineReducers() or similar manual code, preloadedState always 
+wins over state = ... in the reducer because the state passed to the reducer 
+is preloadedState and is not undefined, so the ES6 argument syntax doesn't apply.
+
+With combineReducers() the behavior is more nuanced. Those reducers whose state 
+is specified in preloadedState will receive that state. Other reducers will 
+receive undefined and because of that will fall back to the state = ... default argument they specify.
+
+In general, preloadedState wins over the state specified by the reducer. 
+This lets reducers specify initial data that makes sense to them as default 
+arguments, but also allows loading existing data (fully or partially) 
+when you're hydrating the store from some persistent storage or the server.
+
+In Depth
+
+Single Simple Reducer
+
+First let's consider a case where you have a single reducer.
+ Say you don't use combineReducers().
+
+Then your reducer might look like this:
+
+function counter(state = 0, action) {
+  switch (action.type) {
+  case 'INCREMENT': return state + 1;
+  case 'DECREMENT': return state - 1;
+  default: return state;
+  }
+}
+
+Now let's say you create a store with it.
+
+import { createStore } from 'redux';
+let store = createStore(counter);
+console.log(store.getState()); // 0
+
+The initial state is zero. Why? Because the second argument to 
+createStore was undefined. This is the state passed to your reducer 
+the first time. When Redux initializes it dispatches a "dummy" action 
+to fill the state. So your counter reducer was called with state equal 
+to undefined. This is exactly the case that "activates" the default 
+argument. Therefore, state is now 0 as per the default 
+state value (state = 0). This state (0) will be returned.
+
+Let's consider a different scenario:
+
+import { createStore } from 'redux';
+let store = createStore(counter, 42);
+console.log(store.getState()); // 42
+Why is it 42, and not 0, this time? Because createStore 
+was called with 42 as the second argument. This argument 
+becomes the state passed to your reducer along with the 
+dummy action. This time, state is not undefined (it's 42!), 
+so ES6 default argument syntax has no effect. The state is
+ 42, and 42 is returned from the reducer.
+
+Combined Reducers
+
+Now let's consider a case where you use combineReducers().
+You have two reducers:
+
+function a(state = 'lol', action) {
+  return state;
+}
+
+function b(state = 'wat', action) {
+  return state;
+}
+
+The reducer generated by combineReducers({ a, b }) looks like this:
+
+// const combined = combineReducers({ a, b })
+function combined(state = {}, action) {
+  return {
+    a: a(state.a, action),
+    b: b(state.b, action)
+  };
+}
+
+If we call createStore without the preloadedState, 
+it's going to initialize the state to {}. Therefore, 
+state.a and state.b will be undefined by the time it 
+calls a and b reducers. Both a and b reducers will receive 
+undefined as their state arguments, and if they specify 
+default state values, those will be returned. This is how 
+the combined reducer returns a { a: 'lol', b: 'wat' } state 
+object on the first invocation.
+
+import { createStore } from 'redux';
+let store = createStore(combined);
+console.log(store.getState()); // { a: 'lol', b: 'wat' }
+Let's consider a different scenario:
+
+import { createStore } from 'redux';
+let store = createStore(combined, { a: 'horse' });
+console.log(store.getState()); // { a: 'horse', b: 'wat' }
+
+Now I specified the preloadedState as the argument to createStore(). 
+The state returned from the combined reducer combines the initial 
+state I specified for the a reducer with the 'wat' default
+argument specified that b reducer chose itself.
+
+Let's recall what the combined reducer does:
+
+// const combined = combineReducers({ a, b })
+function combined(state = {}, action) {
+  return {
+    a: a(state.a, action),
+    b: b(state.b, action)
+  };
+}
+
+In this case, state was specified so it didn't fall back to {}. 
+It was an object with a field equal to 'horse', but without the 
+b field. This is why the a reducer received 'horse' as its 
+state and gladly returned it, but the b reducer received 
+undefined as its state and thus returned its idea of the 
+default state (in our example, 'wat'). This is how we 
+get { a: 'horse', b: 'wat' } in return.
+
+Recap
+
+To sum this up, if you stick to Redux conventions and return
+ the initial state from reducers when they're called with
+  undefined as the state argument (the easiest way to 
+  implement this is to specify the state ES6 default argument value),
+   you're going to have a nice useful behavior for combined reducers. 
+   They will prefer the corresponding value in the preloadedState object 
+   you pass to the createStore() function, but if you didn't pass any, or 
+   if the corresponding field is not set, the default state argument 
+   specified by the reducer is chosen instead. This approach works 
+   well because it provides both initialization and hydration of existing data, 
+   but lets individual reducers reset their state if their data was not preserved. 
+   Of course you can apply this pattern recursively, as you can use combineReducers() 
+   on many levels, or even compose reducers manually by calling reducers and giving 
+   them the relevant part of the state tree.
+
+/////////////////////////////////////////
+/////////////////////////////////////////
+/////////////////////////////////////////
+
+Immutable Update Patterns
+
+The articles listed in Prerequisite Concepts#Immutable Data Management
+ give a number of good examples for how to perform basic update 
+ operations immutably, such as updating a field in an object or 
+ adding an item to the end of an array. However, reducers will often 
+ need to use those basic operations in combination to perform more 
+ complicated tasks. Here are some examples for some of the more common tasks you might have to implement.
+
+Updating Nested Objects
+
+The key to updating nested data is that every level of nesting 
+must be copied and updated appropriately. This is often a difficult
+ concept for those learning Redux, and there are some specific problems 
+ that frequently occur when trying to update nested objects. These lead 
+ to accidental direct mutation, and should be avoided.
+
+Common Mistake #1: New variables that point to the same objects
+
+Defining a new variable does not create a new actual object - 
+it only creates another reference to the same object. An example of this error would be:
+
+function updateNestedState(state, action) {
+    let nestedState = state.nestedState;
+    // ERROR: this directly modifies the existing object reference - don't do this!
+    nestedState.nestedField = action.data;
+
+    return {
+        ...state,
+        nestedState
+    };
+}
+
+This function does correctly return a shallow copy of the top-level 
+state object, but because the nestedState variable was still pointing
+ at the existing object, the state was directly mutated.
+
+Common Mistake #2: Only making a shallow copy of one level
+
+Another common version of this error looks like this:
+
+function updateNestedState(state, action) {
+    // Problem: this only does a shallow copy!
+    let newState = {...state};
+
+    // ERROR: nestedState is still the same object!
+    newState.nestedState.nestedField = action.data;
+
+    return newState;
+}
+
+Doing a shallow copy of the top level is not sufficient - 
+the nestedState object should be copied as well.
+
+Correct Approach: Copying All Levels of Nested Data
+
+Unfortunately, the process of correctly applying immutable updates 
+to deeply nested state can easily become verbose and hard to
+ read. Here's what an example of updating state.first.second[someId].fourth might look like:
+
+function updateVeryNestedField(state, action) {
+    return {
+        ....state,
+        first : {
+            ...state.first,
+            second : {
+                ...state.first.second,
+                [action.someId] : {
+                    ...state.first.second[action.someId],
+                    fourth : action.someValue
+                }
+            }
+        }
+    }
+}
+
+Obviously, each layer of nesting makes this harder to read, 
+and gives more chances to make mistakes. This is one of several 
+reasons why you are encouraged to keep your state flattened,
+ and compose reducers as much as possible.
+
+Inserting and Removing Items in Arrays
+
+Normally, a Javascript array's contents are modified using 
+mutative functions like push, unshift, and splice. Since 
+we don't want to mutate state directly in reducers, those 
+should normally be avoided. Because of that, you might see 
+"insert" or "remove" behavior written like this:
+
+function insertItem(array, action) {
+    return [
+        ...array.slice(0, action.index),
+        action.item,
+        ...array.slice(action.index)
+    ]
+}
+
+function removeItem(array, action) {
+    return [
+        ...array.slice(0, action.index),
+        ...array.slice(action.index + 1)
+    ];
+}
+
+However, remember that the key is that the original 
+in-memory reference is not modified. As long as we make
+ a copy first, we can safely mutate the copy. Note that
+  this is true for both arrays and objects, but nested 
+  values still must be updated using the same rules.
+
+This means that we could also write the insert and remove functions like this:
+
+function insertItem(array, action) {
+    let newArray = array.slice();
+    newArray.splice(action.index, 0, action.item);
+    return newArray;
+}
+
+function removeItem(array, action) {
+    let newArray = array.slice();
+    newArray.splice(action.index, 1);
+    return newArray;
+}
+The remove function could also be implemented as:
+
+function removeItem(array, action) {
+    return array.filter( (item, index) => index !== action.index);
+}
+Updating an Item in an Array
+
+Updating one item in an array can be accomplished by using 
+Array.map, returning a new value for the item we want to update, 
+and returning the existing values for all other items:
+
+function updateObjectInArray(array, action) {
+    return array.map( (item, index) => {
+        if(index !== action.index) {
+            // This isn't the item we care about - keep it as-is
+            return item;
+        }
+
+        // Otherwise, this is the one we want - return an updated value
+        return {
+            ...item,
+            ...action.item
+        };    
+    });
+}
+Immutable Update Utility Libraries
+
+Because writing immutable update code can become tedious, 
+there are a number of utility libraries that try to abstract out the process.
+These libraries vary in APIs and usage, but all try to provide a shorter and 
+more succinct way of writing these updates. Some, like dot-prop-immutable, 
+take string paths for commands:
+
+state = dotProp.set(state, `todos.${index}.complete`, true)
+Others, like immutability-helper (a fork of the now-deprecated React 
+Immutability Helpers addon), use nested values and helper functions:
+
+var collection = [1, 2, {a: [12, 17, 15]}];
+var newCollection = update(collection, {2: {a: {$splice: [[1, 1, 13, 14]]}}});
+They can provide a useful alternative to writing manual immutable update logic.
+
+A list of many immutable update utilities can be found in the Immutable 
+Data#Immutable Update Utilities section of the Redux Addons Catalog.
