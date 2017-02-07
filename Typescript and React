@@ -1,0 +1,217 @@
+Quick Start
+
+# Install Typings CLI utility. 
+npm install typings --global
+ 
+# Search for definitions. 
+typings search tape
+ 
+# Find a definition by name. 
+typings search --name react
+ 
+# If you use the package as a module: 
+# Install non-global typings (defaults to "npm" source, configurable through `defaultSource` in `.typingsrc`). 
+typings install debug --save
+ 
+# If you use the package through `<script>`, it is part of the environment, or 
+# the module typings are not yet available, try searching and installing with `--global`: 
+typings install dt~mocha --global --save
+ 
+# If you need a specific commit from github. 
+typings install d3=github:DefinitelyTyped/DefinitelyTyped/d3/d3.d.ts#1c05872e7811235f43780b8b596bfd26fe8e7760 --global --save
+ 
+# Search and install by version. 
+typings info env~node --versions
+typings install env~node@0.10 --global --save
+ 
+# Install typings from a particular source (use `<source>~<name>` or `--source <source>`). 
+typings install env~atom --global --save
+typings install bluebird --source npm --save
+ 
+# Use `typings/index.d.ts` (in `tsconfig.json` or as a `///` reference). 
+cat typings/index.d.ts
+
+Usage
+Typings is the simple way to manage and install TypeScript definitions. It uses typings.json, which can resolve to the Typings Registry, 
+GitHub, NPM, Bower, HTTP and local files. Packages can use type definitions from various sources and different versions, knowing they will never conflict for users.
+
+typings install debug --save
+The public registry is maintained by the community, and is used to resolve official type definitions for JavaScript packages.
+
+Read More
+Commands
+Coming from TSD?
+Example typings
+Why external modules?
+About the registry
+FAQ
+Known Issues
+Sources
+npm - dependencies from NPM
+github - dependencies directly from GitHub (E.g. Duo, JSPM)
+bitbucket - dependencies directly from Bitbucket
+jspm: - dependencies from installed JSPM packages with typings distributed. Requires jspm@0.17+.
+bower - dependencies from Bower
+common - "standard" libraries without a known "source"
+shared - shared library functionality
+lib - shared environment functionality (mirror of shared) (--global)
+env - environments (E.g. atom, electron) (--global)
+global - global (window.<var>) libraries (--global)
+dt - typings from DefinitelyTyped (usually --global)
+Contributing
+# Installation 
+# Fork this repo (https://github.com/typings/typings) 
+# Clone the fork (E.g. `https://github.com/<your_username>/typings.git`) 
+cd typings
+ 
+# Install modules 
+npm install
+ 
+# Build 
+npm run build
+ 
+# Test 
+npm run test
+
+You might find the Typings command line API familiar; it is very similar to the one used with npm.
+
+After installing Typings, you can use the init command to create a config file: typings init
+
+Search for type definitions by name using the search command with the –name flag.
+
+> typings search --name react
+Viewing 1 of 1
+ 
+NAME  SOURCE HOMEPAGE                         DESCRIPTION VERSIONS UPDATED  
+react dt     http://facebook.github.io/react/             2        2016-05-26T13:46:01.000Z  
+The “dt” refers to the source location of the type definition; 
+it can be npm or a popular site called Definitely Typed (dt), for example. 
+A list of sources can be found here.
+
+Type definitions are installed with the install command.
+
+typings install dt~react dt~react-dom --save  
+The flag — save has behavior that’s similar to npm’s — save flag: it saves the type definition reference to typings.json.
+
+We are still missing React itself, which can be installed with npm:
+
+
+npm install react react-dom --save  
+
+
+////////////////////////////////////////////////////////////////////////////////////
+
+TYPESCRIPT SETUP:
+
+npm install --save react react-dom @types/react @types/react-dom
+
+tsconfig.json controls the behaviour of the Typescript compiler (tsc). There are a few settings which are useful for React and Babel 
+projects which differ from the defaults. Open tsconfig.json and change it to the following:
+
+{
+  "compilerOptions": {
+    "module": "es6",
+    "target": "es6",
+    "moduleResolution": "node",
+    "baseUrl": "src",
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false,
+    "sourceMap": true,
+    "jsx": "preserve"
+  },
+  "exclude": [
+    "node_modules"
+  ]
+}
+An explanation of what this all means:
+
+"module": "es6" tells tsc to output code which uses the ES6 module spec (i.e. import statements). It’s also possible to set this to e.g. 
+commonjs, in which case tsc will convert your code to that module spec, but as we will be putting our compiled JS code through Webpack, 
+we can keep it as ES6 and let Webpack handle the module bundling.
+
+"target": "es6" tells tsc to output ES6 rather than ES5 Javascript code. We want this as we will be running the compiled JS through Babel, 
+and keeping ES6 code intact after compilation can be useful for some Babel plugins (e.g. transform-react-stateless-component-name, which 
+automatically names stateless components, will only pick up on arrow functions).
+
+This also allows us to use async/await, which is understood by Typescript but not currently able to be transpiled – instead, we can use 
+Babel to handle the transpilation of async code. If we weren’t using Babel, this setting could be omitted or set to es5, to make tsc 
+do the transpilation of ES6 to ES5 itself.
+
+"moduleResolution": "node" tells tsc to use the Node module resolution strategy. This allows Typescript to load type declarations supplied alongside npm packages (e.g. MobX includes its own type declarations in the main mobx package), and with the baseUrl option, allows us to use absolute-style imports for local modules.
+
+"baseUrl": "src" tells tsc to look in src for any modules we import that aren’t found in node_modules. This allows us to write absolute-style imports for local modules, e.g. import Whatever from 'components/Whatever' rather than import Whatever from '../components/Whatever', which is great for one’s sanity.
+
+Note that this settings does not work with the current version of atom-typescript (see https://github.com/TypeStrong/atom-typescript/pull/849) – remove this line from your tsconfig.json if you want to use Atom. You can get an approximation of the absolute-style import by using "moduleResolution": "classic" (which will walk up the directory tree until a match is found, so not the same behaviour, but similar end result in many cases), but this breaks the ability to automatically import type declarations supplied with npm packages.
+
+"allowSyntheticDefaultImports": true allows us to use ES6 import syntax for npm modules which don’t have a default export.
+
+"noImplicitAny": false tells tsc not to warn us if any variables are inferred as having a type of any. It’s actually probably good practice to set this to true, but it does mean you’ll potentially have to be more liberal with type annotations.
+
+"sourceMap": true tells tsc to output a source map, which enables easier debugging from the browser as it can tell you where in the original .ts source file an error occurred, rather than just in the compiled .js.
+
+"outDir": "ts-build" tells tsc to output the compiled .js files to a directory called ts-build (which can be .gitignored). The default is to output them alongside the original .ts source files, but this gets messy. It should be noted that most of the time, we won’t be outputting the compiled .js to disk, as the Webpack loader will do the compilation in memory, but it is sometimes useful to be able to invoke tsc manually and inspect the compiled output.
+
+"jsx": "preserve" tells tsc to leave JSX code as it is, meaning that something else (in this case, Babel) is responsible for compiling it down to React.createElement function calls. It is possible to set this to "react" instead, which will cause tsc to output React.createElement calls directly, but it can be useful to have the raw JSX available to Babel, e.g. for plugins to process.
+
+We exclude node_modules as we don’t want tsc to try and compile anything it finds in there – it’s alternatively possible to explicitly include files for compilation (or use the non-standard filesGlob option, which allows you to specify wildcard patterns, supported by the Atom plugin and https://github.com/TypeStrong/tsconfig)
+
+npm install --save react-router @types/react-router
+
+These instructions will guide you through setting up a new project with Typescript, React, Webpack 
+and Babel – neither Webpack nor Babel are required to work with Typescript, as Typescript can 
+transpile ES6 to ES5 and do some degree of bundling itself; but using them enables Hot Module Reloading,
+ and also allows you to run other Babel and Webpack plugins on the compiled output if desired.
+
+ If you want to lint your code, you'll want to install a tslint plugin for your editor and setup tslint – 
+ see the project page at https://github.com/palantir/tslint/ for more information.
+
+back to ToC ↑
+
+CLI
+
+npm install -g tslint typescript@next
+Library
+
+npm install tslint typescript@next
+
+Create a new project:
+
+mkdir my-project && cd my-project
+git init
+npm init -y
+Initialise the project for Typescript - install Typescript 
+as a dev dependency and create a skeleton tsconfig.json:
+
+npm i -D typescript@next
+tsc --init
+
+npm install tslint@next
+
+tslint.json
+{
+  /*
+   * Possible values:
+   * - the name of a built-in config
+   * - the name of an NPM module which has a "main" file that exports a config object
+   * - a relative path to a JSON file
+   */
+  "extends": "tslint:latest",
+  "rules": {
+    /*
+     * Any rules specified here will override those from the base config we are extending.
+     */
+    "curly": true
+  },
+  "jsRules": {
+    /*
+     * Any rules specified here will override those from the base config we are extending.
+     */
+    "curly": true
+  },
+  "rulesDirectory": [
+    /*
+     * A list of relative or absolute paths to directories that contain custom rules.
+     * See the Custom Rules documentation below for more details.
+     */
+  ]
+}

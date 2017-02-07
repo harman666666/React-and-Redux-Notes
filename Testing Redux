@@ -63,9 +63,12 @@ describe('actions', () => {
     expect(actions.addTodo(text)).toEqual(expectedAction)
   })
 })
+
 Async Action Creators
 
-For async action creators using Redux Thunk or other middleware, it's best to completely mock the Redux store for tests. You can apply the middleware to a mock store using redux-mock-store. You can also use nock to mock the HTTP requests.
+For async action creators using Redux Thunk or other middleware, it's best 
+to completely mock the Redux store for tests. You can apply the middleware 
+to a mock store using redux-mock-store. You can also use nock to mock the HTTP requests.
 
 Example
 
@@ -136,7 +139,8 @@ describe('async actions', () => {
 })
 Reducers
 
-A reducer should return the new state after applying the action to the previous state, and that's the behavior tested below.
+A reducer should return the new state after applying the action to the
+ previous state, and that's the behavior tested below.
 
 Example
 

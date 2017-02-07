@@ -364,8 +364,10 @@ Note: This is equivalent to Immutable.is(this, other), but provided to allow for
 hashCode()
 Computes and returns the hashed identity for this Iterable.
 hashCode(): number
+
 DISCUSSION
-The hashCode of an Iterable is used to determine potential equality, and is used when adding this to a Set or as a key in a Map, enabling lookup via a different instance.
+The hashCode of an Iterable is used to determine potential equality, and is used when adding 
+this to a Set or as a key in a Map, enabling lookup via a different instance.
 
 var a = List.of(1, 2, 3);
 var b = List.of(1, 2, 3);
@@ -591,16 +593,19 @@ sideEffect: (value: V, key: K, iter: Iterable<K, V>) => any,
 context?: any
 ): number
 DISCUSSION
-Unlike Array#forEach, if any call of sideEffect returns false, the iteration will stop. Returns the number of entries iterated (including the last iteration which returned false).
+Unlike Array#forEach, if any call of sideEffect returns false, the iteration will stop. Returns the number of 
+entries iterated (including the last iteration which returned false).
 Creating subsets
 
 slice()
 Returns a new Iterable of the same type representing a portion of this Iterable from start up to but not including end.
 slice(begin?: number, end?: number): Iterable<K, V>
 DISCUSSION
-If begin is negative, it is offset from the end of the Iterable. e.g. slice(-2) returns a Iterable of the last two entries. If it is not provided the new Iterable will begin at the beginning of this Iterable.
+If begin is negative, it is offset from the end of the Iterable. e.g. slice(-2) returns a Iterable of the last two 
+entries. If it is not provided the new Iterable will begin at the beginning of this Iterable.
 
-If end is negative, it is offset from the end of the Iterable. e.g. slice(0, -1) returns an Iterable of everything but the last entry. If it is not provided, the new Iterable will continue through the end of this Iterable.
+If end is negative, it is offset from the end of the Iterable. e.g. slice(0, -1) returns an Iterable of everything 
+but the last entry. If it is not provided, the new Iterable will continue through the end of this Iterable.
 
 If the requested slice is equivalent to the current Iterable, then it will return itself.
 rest()
@@ -672,7 +677,9 @@ Flattens nested Iterables.
 flatten(depth?: number): Iterable<any, any>
 flatten(shallow?: boolean): Iterable<any, any>
 DISCUSSION
-Will deeply flatten the Iterable by default, returning an Iterable of the same type, but a depth can be provided in the form of a number or boolean (where true means to shallowly flatten one level). A depth of 0 (or shallow: false) will deeply flatten.
+Will deeply flatten the Iterable by default, returning an Iterable of the same type, but a depth 
+can be provided in the form of a number or boolean (where true means to shallowly flatten one level). 
+A depth of 0 (or shallow: false) will deeply flatten.
 
 Flattens only others Iterable, not Arrays or Objects.
 
@@ -738,8 +745,10 @@ count(
 predicate: (value: V, key: K, iter: Iterable<K, V>) => boolean,
 context?: any
 ): number
+
 DISCUSSION
-Regardless of if this Iterable can describe its size lazily (some Seqs cannot), this method will always return the correct size. E.g. it evaluates a lazy Seq if necessary.
+Regardless of if this Iterable can describe its size lazily (some Seqs cannot), this method will always return the correct size.
+ E.g. it evaluates a lazy Seq if necessary.
 
 If predicate is provided, then this returns the count of entries in the Iterable for which the predicate returns true.
 countBy()
@@ -827,7 +836,9 @@ min(comparator?: (valueA: V, valueB: V) => number): V
 DISCUSSION
 The comparator is used in the same way as Iterable#sort. If it is not provided, the default comparator is <.
 
-When two values are considered equivalent, the first encountered will be returned. Otherwise, min will operate independent of the order of input as long as the comparator is commutative. The default comparator < is commutative only when types do not differ.
+When two values are considered equivalent, the first encountered will be returned. Otherwise, min will operate 
+independent of the order of input as long as the comparator is commutative. The default comparator < is 
+commutative only when types do not differ.
 
 If comparator returns 0 and either value is NaN, undefined, or null, that value will be returned.
 minBy()

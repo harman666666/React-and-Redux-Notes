@@ -1411,7 +1411,8 @@ from the command line: npm install -g webpack webpack-dev-server.
 
 Next, let's add a Webpack configuration file at the root of the project,
  that matches the files and directories we've created:
-
+ 
+webpack.config.js
 module.exports = {
   entry: [
     './src/index.js'
