@@ -1,0 +1,1033 @@
+Concepts
+  
+webpack is a module bundler for modern JavaScript applications. 
+It is incredibly configurable, however, there are Four Core Concepts 
+we feel you should understand before you get started!
+
+Dependency Graph
+ 
+Any time one file depends on another, webpack treats this as a dependency. 
+This allows webpack to take non-code assets, such as images or web fonts, 
+and also provide them as dependencies for your application.
+
+When webpack processes your application, it starts from a list of modules 
+defined on the command line or in its config file. Starting from these entry 
+points, webpack recursively builds a dependency graph that includes every module 
+your application needs, then packages all of those modules into a small number
+ of bundles - often, just one - to be loaded by the browser.
+
+Entry
+webpack creates a graph of all of your application's dependencies. 
+The starting point of this graph is known as an entry point. The entry point 
+tells webpack where to start and follows the graph of dependencies to know 
+what to bundle. You can think of your application's entry point as the 
+contextual root or the first file to kick off your app.
+
+In webpack we define entry points using the entry property in our webpack configuration object.
+
+The simplest example is seen below:
+
+webpack.config.js
+
+module.exports = {
+  entry: './path/to/my/entry/file.js'
+};
+
+There are multiple ways to declare your entry property that are specific to your application's needs.
+
+
+Output
+
+Once you've bundled all of your assets together, we still need to tell 
+webpack where to bundle our application. The webpack 
+output property describes to webpack how to treat bundled code.
+
+webpack.config.js
+
+const path = require('path');
+
+module.exports = {
+  entry: './path/to/my/entry/file.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'my-first-webpack.bundle.js'
+  }
+};
+
+In the example above, through the output.filename 
+and output.path properties we are describing to 
+webpack the name of our bundle, and where we want it to be emitted to.
+
+You may see the term emitted or emit used throughout our documentation and plugin API. 
+This is a fancy term for "produced or discharged".
+The output property has many more configurable features, but let's spend 
+some time understanding some of the most common use cases for the output property.
+
+
+Loaders
+The goal is to have all of the assets in your project to be webpack's 
+concern and not the browser's. (This doesn't mean that they all 
+have to be bundled together). webpack treats every file (.css, .html, .scss, .jpg, etc.) 
+as a module. However, webpack only understands JavaScript.
+
+Loaders in webpack transform these files into modules 
+as they are added to your dependency graph.
+
+At a high level, they have two purposes in your webpack config.
+
+Identify what files should be transformed by a certain loader. (test property)
+Transform that file so that it can be added to 
+your dependency graph (and eventually your bundle). (use property)
+
+webpack.config.js
+
+const path = require('path');
+
+const config = {
+  entry: './path/to/my/entry/file.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'my-first-webpack.bundle.js'
+  },
+  module: {
+    rules: [
+      {test: /\.(js|jsx)$/, use: 'babel-loader'}
+    ]
+  }
+};
+
+module.exports = config;
+
+In the configuration above we have defined a rules property 
+for a single module with two required properties: 
+test, and use. This tells webpack's compiler the following:
+
+"Hey webpack compiler, when you come across a path that resolves 
+to a '.js' or '.jsx' file inside of a require()/import statement, 
+use the babel-loader to transform it before you add it to the bundle".
+ It is important to remember when defining rules in your webpack config, 
+ you are defining them under module.rules, and not rules. 
+ But webpack will yell at you when doing this incorrectly.
+There are more specific properties to define on loaders that we haven't yet covered.
+
+Learn more!
+
+Plugins
+
+Since Loaders only execute transforms on a per-file basis, 
+plugins are most commonly used (but not limited to) performing 
+actions and custom functionality on "compilations" or "chunks" 
+of your bundled modules (and so much more). The webpack 
+Plugin system is extremely powerful and customizable.
+
+In order to use a plugin, you just need to require() 
+it and add it to the plugins array. Most plugins are customizable 
+via options. Since you can use a plugin multiple times in a config 
+for different purposes, you need to create an instance of it by calling it with new.
+
+webpack.config.js
+
+const HtmlWebpackPlugin = require('html-webpack-plugin'); //installed via npm
+const webpack = require('webpack'); //to access built-in plugins
+const path = require('path');
+
+const config = {
+  entry: './path/to/my/entry/file.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'my-first-webpack.bundle.js'
+  },
+  module: {
+    rules: [
+      {test: /\.(js|jsx)$/, use: 'babel-loader'}
+    ]
+  },
+  plugins: [
+    new webpack.optimize.UglifyJsPlugin(),
+    new HtmlWebpackPlugin({template: './src/index.html'})
+  ]
+};
+
+module.exports = config;
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+ENTRY POINTS:
+
+Like we mentioned in the introduction, there are multiple ways to 
+define the entry property in your webpack configuration. We will 
+show you the ways you can configure the entry property, in addition
+to explaining why it may be useful to you.
+
+Single Entry (Shorthand) Syntax
+Usage: entry: string|Array<string>
+
+webpack.config.js
+
+const config = {
+  entry: './path/to/my/entry/file.js'
+};
+
+module.exports = config;
+
+The single entry syntax for the entry property is a shorthand for:
+
+const config = {
+  entry: {
+    main: './path/to/my/entry/file.js'
+  }
+};
+
+What happens when you pass an array to entry? Passing an array of file 
+paths to the entry property creates what is known as a "multi-main entry". 
+This is useful when you would like to inject multiple dependent files together 
+and graph their dependencies into one "chunk".
+This is a great choice when you are looking to quickly setup a webpack configuration 
+for an application or tool with one entry point (IE: a library). However, 
+there is not much flexibility in extending or scaling your configuration with this syntax.
+
+Object Syntax
+Usage: entry: {[entryChunkName: string]: string|Array<string>}
+
+webpack.config.js
+
+const config = {
+  entry: {
+    app: './src/app.js',
+    vendors: './src/vendors.js'
+  }
+};
+
+The object syntax is more verbose. However, this is the most 
+scalable way of defining entry/entries in your application.
+
+ "Scalable webpack configurations" are ones that can be reused and combined 
+ with other partial configurations. This is a popular technique used to 
+ separate concerns by environment, build target and runtime. They are 
+ then merged using specialized tools like webpack-merge.
+Scenarios
+Below is a list of entry configurations and their real-world use cases:
+
+Separate App and Vendor Entries
+webpack.config.js
+
+const config = {
+  entry: {
+    app: './src/app.js',
+    vendors: './src/vendors.js'
+  }
+};
+
+What does this do? At face value this tells webpack to create dependency 
+graphs starting at both app.js and vendors.js. These graphs are completely 
+separate and independent of each other (there will be a webpack bootstrap in 
+each bundle). This is commonly seen with single page applications which 
+have only one entry point (excluding vendors).
+
+Why? This setup allows you to leverage CommonsChunkPlugin and extract 
+any vendor references from your app bundle into your vendor bundle, 
+replacing them with __webpack_require__() calls. If there is no vendor 
+code in your application bundle, then you can achieve a common pattern 
+in webpack known as long-term vendor-caching.
+
+ Consider removing this scenario in favor of the DllPlugin, which provides a better vendor-splitting.
+
+Multi Page Application
+
+webpack.config.js
+
+const config = {
+  entry: {
+    pageOne: './src/pageOne/index.js',
+    pageTwo: './src/pageTwo/index.js',
+    pageThree: './src/pageThree/index.js'
+  }
+};
+
+What does this do? We are telling webpack that we would like 3 
+separate dependency graphs (like the above example).
+
+Why? In a multi-page application, the server is going to fetch a new HTML
+document for you. The page reloads this new document and assets are 
+redownloaded. However, this gives us the unique opportunity to do multiple things:
+
+Use CommonsChunkPlugin to create bundles of shared application code 
+between each page. Multi-page applications that reuse a lot of code/modules
+between entry points can greatly benefit from these techniques, as the amount of entry points increase.
+
+ As a rule of thumb: for each HTML document use exactly one entry point.
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////
+Outputs:
+
+Output
+  
+Options affecting the output of the compilation. output options tell webpack 
+how to write the compiled files to disk. Note, that while there can be multiple 
+entry points, only one output configuration is specified.
+
+If you use any hashing ([hash] or [chunkhash]), make sure to have a consistent 
+ordering of modules. Use the OccurrenceOrderPlugin or recordsPath.
+
+Usage
+The minimum requirements for the output property in your webpack config is to
+ set its value to an object including the following two things :
+
+Your preferred filename of the compiled file: // main.js || bundle.js || index.js
+
+An output.path as an absolute path for what directory you prefer it to go in once bundled.
+
+webpack.config.js
+
+const config = {
+  output: {
+    filename: 'bundle.js',
+    path: '/home/proj/public/assets'
+  }
+};
+
+module.exports = config;
+
+Options
+The following is a list of values you can pass to the output property.
+
+output.chunkFilename
+
+The filename of non-entry chunks as a relative path inside the output.path directory.
+
+[id] is replaced by the id of the chunk.
+
+[name] is replaced by the name of the chunk (or with the id when the chunk has no name).
+
+[hash] is replaced by the hash of the compilation.
+
+[chunkhash] is replaced by the hash of the chunk.
+
+output.crossOriginLoading
+
+This option enables cross-origin loading of chunks.
+
+Possible values are:
+
+false - Disable cross-origin loading.
+"anonymous" - Cross-origin loading is enabled. When using anonymous no credentials will be sent with the request.
+"use-credentials" - Cross-origin loading is enabled and credentials will be send with the request.
+
+Default: false
+
+see also library
+
+see also Development Tools
+output.devtoolLineToLine
+
+Enable line-to-line mapped mode for all/specified modules. 
+Line-to-line mapped mode uses a simple SourceMap where
+each line of the generated source is mapped to the same line of the original source
+ It's a performance optimization. Only use it if your performance needs to be
+  better and you are sure that input lines match which generated lines.
+
+true enables it for all modules (not recommended)
+
+An object {test, include, exclude} similar to module.loaders enables it for specific files.
+
+Default: false
+output.filename
+
+Specifies the name of each output file on disk. You must not 
+specify an absolute path here! The output.path option determines 
+the location on disk the files are written. filename is 
+used solely for naming the individual files.
+
+single entry
+
+{
+  entry: './src/app.js',
+  output: {
+    filename: 'bundle.js',
+    path: __dirname + '/build'
+  }
+}
+
+// writes to disk: ./build/bundle.js
+
+multiple entries
+If your configuration creates more than a single "chunk" (as 
+with multiple entry points or when using plugins like 
+CommonsChunkPlugin), you should use substitutions to 
+ensure that each file has a unique name.
+
+[name] is replaced by the name of the chunk.
+[hash] is replaced by the hash of the compilation.
+[chunkhash] is replaced by the hash of the chunk.
+
+{
+  entry: {
+    app: './src/app.js',
+    search: './src/search.js'
+  },
+  output: {
+    filename: '[name].js',
+    path: __dirname + '/build'
+  }
+}
+
+// writes to disk: ./build/app.js, ./build/search.js
+output.hotUpdateChunkFilename
+The filename of the Hot Update Chunks. 
+They are inside the output.path directory.
+
+[id] is replaced by the id of the chunk.
+[hash] is replaced by the hash of the compilation. (The last hash stored in the records)
+
+Default: "[id].[hash].hot-update.js"
+output.hotUpdateFunction
+The JSONP function used by webpack for async loading of hot update chunks.
+
+Default: "webpackHotUpdate"
+output.hotUpdateMainFilename
+
+The filename of the Hot Update Main File. 
+It is inside the output.path directory.
+
+[hash] is replaced by the hash of the compilation. (The last hash stored in the records)
+
+Default: "[hash].hot-update.json"
+output.jsonpFunction
+The JSONP function used by webpack for async loading of chunks.
+
+A shorter function may reduce the file size a bit. Use a different 
+identifier when having multiple webpack instances on a single page.
+
+Default: "webpackJsonp"
+output.library
+If set, export the bundle as library. output.library is the name.
+
+Use this if you are writing a library and want to publish it as single file.
+
+output.libraryTarget
+Which format to export the library:
+
+"var" - Export by setting a variable: var Library = xxx (default)
+"this" - Export by setting a property of this: this["Library"] = xxx
+"commonjs" - Export by setting a property of exports: exports["Library"] = xxx
+"commonjs2" - Export by setting module.exports: module.exports = xxx
+"amd" - Export to AMD (optionally named - set the name via the library option)
+"umd" - Export to AMD, CommonJS2 or as property in root
+
+Default: "var"
+If output.library is not set, but output.libraryTarget is set to 
+a value other than var, every property of the exported 
+object is copied (Except amd, commonjs2 and umd).
+
+output.path
+The output directory as an absolute path (required).
+
+[hash] is replaced by the hash of the compilation.
+
+config.js
+
+output: {
+    path: "/home/proj/public/assets",
+    publicPath: "/assets/"
+}
+
+index.html
+<head>
+  <link href="/assets/spinner.gif"/>
+</head>
+
+And a more complicated example of using a CDN and hashes for assets.
+
+config.js
+
+output: {
+    path: "/home/proj/cdn/assets/[hash]",
+    publicPath: "http://cdn.example.com/assets/[hash]/"
+}
+
+Note: In cases when the eventual publicPath of output files 
+isn't known at compile time, it can be left blank and set 
+dynamically at runtime in the entry point file. If you don't
+ know the publicPath while compiling, you can omit it 
+ and set __webpack_public_path__ on your entry point.
+
+ __webpack_public_path__ = myRuntimePublicPath
+
+// rest of your application entry
+output.sourceMapFilename
+The filename of the SourceMaps for the JavaScript files. They are inside the output.path directory.
+
+[file] is replaced by the filename of the JavaScript file.
+[id] is replaced by the id of the chunk.
+[hash] is replaced by the hash of the compilation.
+
+Default: "[file].map"
+
+
+/////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////
+
+LOADERS:
+
+Loaders are transformations that are applied on a resource file of your 
+application. They are functions (running in Node.js) that take the source 
+of a resource file as the parameter and return the new source.
+
+Example
+For example, you can use loaders to tell webpack to load a CSS file or to 
+convert TypeScript to JavaScript. Firstly, install the corresponding loaders:
+
+npm install --save-dev css-loader
+npm install --save-dev ts-loader
+
+Secondly, configure in your webpack.config.js that for every .css file 
+the css-loader should be used and analogously for .ts files and the ts-loader:
+
+webpack.config.js
+
+module.exports = {
+  module: {
+    rules: [
+      {test: /\.css$/, use: 'css-loader'},
+      {test: /\.ts$/, use: 'ts-loader'}
+    ]
+  }
+};
+
+Note that according to the configuration options, 
+the following specifications define the identical loader usage:
+
+{test: /\.css$/, loader: 'css-loader'}
+// or equivalently
+{test: /\.css$/, use: 'css-loader'}
+// or equivalently
+{test: /\.css$/, use: {
+  loader: 'css-loader',
+  options: {}
+}}
+
+Configuration
+There are three ways to use loaders in your application:
+
+via configuration
+explicit in the require statement
+via CLI
+Via webpack.config.js
+
+module.rules allows you to specify several loaders within 
+your webpack configuration. This is a concise way to display 
+loaders, and helps to have clean code as well as you 
+have a full overview of each respective loader.
+
+  module: {
+    rules: [
+      {
+        test: /\.css$/,
+        use: [
+          { loader: 'style-loader'},
+          {
+            loader: 'css-loader',
+            options: {
+              modules: true
+            }
+          }
+        ]
+      }
+    ]
+  }
+
+Via require
+It's possible to specify the loaders in the require statement (or define, 
+require.ensure, etc.). Separate loaders from the resource with !. 
+Each part is resolved relative to the current directory.
+
+require('style-loader!css-loader?modules!./styles.css');
+It's possible to overwrite any loaders in the configuration by prefixing the entire rule with !.
+
+Options can be passed with a query parameter, just like on the web 
+(?key=value&foo=bar). It's also possible to use a JSON object (?{"key":"value","foo":"bar"}).
+
+Use module.rules whenever possible, as this will reduce boilerplate in your 
+source code and allows you to debug or locate a loader faster if something goes south.
+
+Via CLI
+Optionally, you could also use loaders through the CLI:
+
+webpack --module-bind jade --module-bind 'css=style!css'
+This uses the jade-loader for .jade files, 
+and the style-loader and css-loader for .css files.
+
+Loader Features
+
+Loaders can be chained. They are applied in a pipeline to the resource. 
+A chain of loaders are compiled chronologically. The first loader 
+in a chain of loaders returns a value to the next. 
+At the end loader, webpack expects JavaScript to be returned.
+
+Loaders can be synchronous or asynchronous.
+Loaders run in Node.js and can do everything that’s possible there.
+Loaders accept query parameters. This can be used to pass configuration to the loader.
+Loaders can also be configured with an options object.
+Normal modules can export a loader in addition to the normal main via package.json with the loader field.
+Plugins can give loaders more features.
+Loaders can emit additional arbitrary files.
+Loaders allow more power in the JavaScript ecosystem through 
+preprocessing functions (loaders). Users now have more flexibility 
+to include fine-grained logic such as compression, packaging, language translations and more.
+
+Resolving Loaders
+Loaders follow the standard module resolution. In most cases you will be 
+loaders from the module path (think npm install, node_modules).
+
+How to write a loader? A loader module is expected to export a function 
+and to be written in Node.js compatible JavaScript. In the common case 
+you manage loaders with npm, but you can also have loaders as files in your app.
+
+By convention, loaders are usually named as XXX-loader, where 
+XXX is the context name. For example, json-loader.
+
+The loader name convention and precedence search order is defined by 
+resolveLoader.moduleTemplates within the webpack configuration API.
+
+//////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+PLUGINS:
+
+Plugins are the backbone of webpack. webpack itself is built on the same 
+plugin system that you use in your webpack configuration!
+
+They also serve the purpose of doing anything else that a loader cannot do.
+
+Anatomy
+A webpack plugin is a JavaScript object that has an apply property. 
+This apply property is called by the webpack compiler, 
+giving access to the entire compilation lifecycle.
+
+ConsoleLogOnBuildWebpackPlugin.js
+
+function ConsoleLogOnBuildWebpackPlugin() {
+
+};
+
+ConsoleLogOnBuildWebpackPlugin.prototype.apply = function(compiler) {
+  compiler.plugin('run', function(compiler, callback) {
+    console.log("The webpack build process is starting!!!");
+
+    callback();
+  });
+};
+
+ As a clever JavaScript developer you may remember the Function.prototype.apply 
+ method. Because of this method you can pass any function as plugin 
+ (this will point to the compiler). You can use this style 
+ to inline custom plugins in your configuration.
+
+Usage
+
+Since plugins can take arguments/options, you must pass a new 
+instance to the plugins property in your webpack configuration.
+
+Depending on how you are using webpack, there are multiple ways to use plugins.
+
+Configuration
+webpack.config.js
+
+const HtmlWebpackPlugin = require('html-webpack-plugin'); //installed via npm
+const webpack = require('webpack'); //to access built-in plugins
+const path = require('path');
+
+const config = {
+  entry: './path/to/my/entry/file.js',
+  output: {
+    filename: 'my-first-webpack.bundle.js',
+    path: path.resolve(__dirname, 'dist')
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(js|jsx)$/,
+        loader: 'babel-loader'
+      }
+    ]
+  },
+  plugins: [
+    new webpack.optimize.UglifyJsPlugin(),
+    new HtmlWebpackPlugin({template: './src/index.html'})
+  ]
+};
+
+module.exports = config;
+
+Node API
+ Even when using the Node API, users should pass plugins via 
+ the plugins property in the configuration. Using compiler.apply should not be the recommended way.
+some-node-script.js
+
+  const webpack = require('webpack'); //to access webpack runtime
+  const configuration = require('./webpack.config.js');
+
+  let compiler = webpack(configuration);
+  compiler.apply(new webpack.ProgressPlugin());
+
+  compiler.run(function(err, stats) {
+    // ...
+  });
+
+ Did you know: The example seen above is extremely similar to the webpack 
+ runtime itself! There are lots of great usage examples hiding in the webpack
+ source code that you can apply to your own configurations and scripts!
+
+////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+
+Configuration
+EDIT THIS PAGE   
+You may have noticed that few webpack configurations look exactly alike. 
+This is because webpack's configuration file is a JavaScript file that exports 
+an object. This object is then processed by webpack based upon its defined properties.
+
+Because it's a standard Node.js CommonJS module, you can do the following:
+
+import other files via require(...)
+use utilities on npm via require(...)
+use JavaScript control flow expressions i. e. the ?: operator
+use constants or variables for often used values
+write and execute functions to generate a part of the configuration
+Use these features when appropriate.
+
+You should NOT use the following things. Technically you could use them, but it's not recommended:
+
+Access CLI arguments, when using the webpack CLI (instead write your own CLI, or use --env)
+Export non-deterministic values (calling webpack twice should result in the same output files)
+Write long configurations (instead split the configuration into multiple files)
+The following examples below describe how webpack's configuration object can be 
+both expressive and configurable because it is code:
+
+The Simplest Configuration
+webpack.config.js
+
+var path = require('path');
+
+module.exports = {
+  entry: './foo.js',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'foo.bundle.js'
+  }
+};
+Multiple Targets
+webpack.config.js
+
+var path = require('path');
+var webpack = require('webpack');
+var webpackMerge = require('webpack-merge');
+
+var baseConfig = {
+  target: 'async-node',
+  entry: {
+    entry: './entry.js'
+  },
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: '[name].js'
+  },
+  plugins: [
+    new webpack.optimize.CommonsChunkPlugin({
+      name: 'inline',
+      filename: 'inline.js',
+      minChunks: Infinity
+    }),
+    new webpack.optimize.AggressiveSplittingPlugin({
+        minSize: 5000,
+        maxSize: 10000
+    }),
+  ]
+};
+
+let targets = ['web', 'webworker', 'node', 'async-node', 'node-webkit', 'electron-main'].map((target) => {
+  let base = webpackMerge(baseConfig, {
+    target: target,
+    output: {
+      path: path.resolve(__dirname, 'dist/' + target),
+      filename: '[name].' + target + '.js'
+    }
+  });
+  return base;
+});
+
+module.exports = targets;
+ The most important part to take away from this document is that there are 
+ many different ways to format and style your webpack configuration. The key 
+ is to stick with something consistent that you and your team can understand and maintain.
+
+ ///////////////////////////////////////////
+ ////////////////////////////////////////////
+ ///////////////////////////////////////////
+
+ Modules
+  
+In modular programming, developers break programs up into discrete chunks 
+of functionality called a module.
+
+Each module has a smaller surface area than a full program, making verification, 
+debugging, and testing trivial. Well-written modules provide solid abstractions 
+and encapsulation boundaries, so that each module has a coherent design and a 
+clear purpose within the overall application.
+
+Node.js has supported modular programming almost since its inception. On the web,
+ however, support for modules has been slow to arrive. Multiple tools exist that 
+ support modular JavaScript on the web, with a variety of benefits and limitations.
+  webpack builds on lessons learned from these systems and applies the concept 
+  of modules to any file in your project.
+
+What is a webpack Module
+In contrast to Node.js modules, webpack modules can express their 
+dependencies in a variety of ways. A few examples are:
+
+An ES2015 import statement
+A CommonJS require() statement
+An AMD define and require statement
+An @import statement inside of a css/sass/less file.
+An image url in a stylesheet (url(...)) or html (<img src=...>) file.
+ webpack 1 requires a specific loader to convert ES2015 import, 
+ however this is possible out of the box via webpack 2
+Supported Module Types
+webpack supports modules written in a variety of languages and preprocessors, 
+via loaders. Loaders describe to webpack how to process non-JavaScript 
+modules and include these dependencies into your bundles. The webpack 
+community has built loaders for a wide variety of popular languages and language processors, including:
+
+CoffeeScript
+TypeScript
+ESNext (Babel)
+Sass
+Less
+Stylus
+
+And many others! Overall, webpack provides a powerful and rich API for 
+customization that allows one to use webpack for any stack, while 
+staying non-opinionated about your development, testing, and production workflows.
+
+ ///////////////////////////////////////////
+ ////////////////////////////////////////////
+ ///////////////////////////////////////////
+
+MODULE RESOLUTION:
+A resolver is a library which helps in locating a module by its absolute path. 
+A module can be required as a dependency from another module as:
+
+import foo from 'path/to/module'
+// or
+require('path/to/module')
+The dependency module can be from the application code or a third party library. 
+The resolver helps webpack finds the module code that needs to be included in the 
+bundle for every such require/import statement. webpack uses enhanced-resolve to 
+resolve file paths while bundling modules.
+
+Resolving rules in webpack
+Using enhanced-resolve, webpack can resolve three kinds of file paths:
+
+Absolute paths
+import "/home/me/file";
+
+import "C:\\Users\\me\\file";
+Since we already have the absolute path to the file, no further resolution is required.
+
+Relative paths
+import "../src/file1";
+import "./file2";
+
+In this case, the directory of the resource file where the import or 
+require occurs is taken to be the context directory. The relative path 
+specified in the import/require is joined to this context path to produce 
+the absolute path to the module.
+
+Module paths
+import "module";
+import "module/lib/file";
+
+Modules are searched for inside all directories specified in resolve.modules. 
+You can replace the original module path by an alternate path by creating an alias 
+for it using resolve.alias configuration option.
+
+Once the path is resolved based on the above rule, the resolver checks to see 
+if the path points to a file or a directory. If the path points to a file:
+
+If the path has a file extension, then the file is bundled straightaway.
+Otherwise, the file extension is resolved using the resolve.extensions option, 
+which tells the resolver which extensions (eg - .js, .jsx) are acceptable for resolution.
+If the path points to a folder, then the following steps are taken to find the right file with the right extension:
+
+If the folder contains a package.json file, then fields specified in 
+resolve.mainFields configuration option are looked up in order, and the 
+first such field in package.json determines the file path.
+If there is no package.json or if the main fields do not return a valid path, 
+file names specified in the resolve.mainFiles configuration option are looked 
+for in order, to see if a matching filename exists in the imported/required directory .
+The file extension is then resolved in a similar way using the resolve.extensions option.
+webpack provides reasonable defaults for these options depending on your build target.
+
+Resolving Loaders
+This follows the same rules as those specified for file resolution. But the 
+resolveLoader configuration option can be used to have separate resolution rules for loaders.
+
+Caching
+Every filesystem access is cached, so that multiple parallel or serial requests 
+to the same file occur faster. In watch mode, only modified files are evicted 
+from the cache. If watch mode is off, then the cache gets purged before every compilation.
+
+Look at Resolve API to know more on the configuration options mentioned above.
+
+////////////////////////////////
+///////////////////////////////
+////////////////////////////////
+
+Targets
+EDIT THIS PAGE   
+Because JavaScript can be written for both server and browser, 
+webpack offers multiple deployment targets that you can set in your webpack configuration.
+
+ The webpack target property is not to be confused with the output.libraryTarget property. 
+ For more information see our guide on the output property.
+Usage
+To set the target property, you simply set the target value in your webpack config:
+
+webpack.config.js
+
+module.exports = {
+  target: 'node'
+};
+In the example above, using node webpack will compile for usage in a 
+Node.js-like environment (uses Node.js require to load chunks and not 
+touch any built in modules like fs or path).
+
+Each target has a variety of deployment/environment specific additions, 
+support to fit its needs. See what targets are available.
+
+ Further expansion for other popular target values
+Multiple Targets
+Although webpack does not support multiple strings being passed into the 
+target property, you can create an isomorphic library by bundling two separate configurations:
+
+webpack.config.js
+
+var path = require('path');
+var serverConfig = {
+  target: 'node',
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'lib.node.js'
+  }
+  //…
+};
+
+var clientConfig = {
+  target: 'web', // <=== can be omitted as default is 'web'
+  output: {
+    path: path.resolve(__dirname, 'dist'),
+    filename: 'lib.js'
+  }
+  //…
+};
+
+module.exports = [ serverConfig, clientConfig ];
+The example above will create a lib.js and lib.node.js file in your dist folder.
+
+Resources
+As seen from the options above there are multiple different deployment 
+targets that you can choose from. Below is a list of examples, and 
+resources that you can refer to.
+
+Bundle Output Comparison
+compare-webpack-target-bundles: A great resource for testing and viewing 
+different webpack targets. Also great for bug reporting.
+
+
+//////////////////////////////////////////////////////
+//////////////////////////////////////////////////
+//////////////////////////////////////////////////////
+
+Hot Module Replacement
+ 
+Hot Module Replacement (HMR) exchanges, adds, or removes modules while 
+an application is running without a page reload. This allows you to speed 
+up development time by updating individual modules when they are changed without refreshing the page.
+
+How Does It Work?
+From The App View
+The app code asks the HMR runtime to check for updates.
+The HMR runtime downloads the updates (asynchronously) and tells the app code that an update is available.
+The app code then asks the HMR runtime to apply the updates.
+The HMR runtime applies the update (synchronously).
+You can set up HMR so that this process happens automatically, 
+or you can choose to require user interaction for updates to occur.
+
+From The Compiler (webpack) View
+In addition to the normal assets, the compiler needs to emit an "update" 
+to allow updating from previous version to the new version. The "update" consists of two parts:
+
+The update manifest (JSON)
+One or more update chunks (JavaScript)
+
+The manifest contains the new compilation hash and a list of all update chunks.
+
+Each update chunk contains code for all updated modules in the respective
+chunk (or a flag indicating that the module was removed).
+
+The compiler makes sure that module IDs and chunk IDs are consistent between these builds
+It typically stores these IDs in memory (for example, when using webpack-dev-server), 
+but it's also possible to store them in a JSON file.
+
+From The Module View
+HMR is an opt-in feature that only affects modules containing HMR code. 
+One example would be patching styling through the style-loader. In order 
+for patching to work, style-loader implements the HMR interface; when it 
+receives an update through HMR, it replaces the old styles with the new ones.
+
+Similarly, when implementing the HMR interface in a module, you can describe 
+what should happen when the module is updated. However, in most cases, it's not 
+mandatory to write HMR code in every module. If a module has no HMR handlers, 
+the update bubbles up. This means that a single handler can handle an update to 
+a complete module tree. If a single module in this tree is updated, the complete 
+module tree is reloaded (only reloaded, not transferred).
+
+From The HMR Runtime View (Technical)
+For the module system runtime, additional code is emitted to track module parents and children.
+
+On the management side, the runtime supports two methods: check and apply.
+
+A check makes an HTTP request to the update manifest. If this request fails, there 
+is no update available. If it succeeds, the list of updated chunks is compared to the 
+list of currently loaded chunks. For each loaded chunk, the corresponding update chunk 
+is downloaded. All module updates are stored in the runtime. When all update chunks have been 
+downloaded and are ready to be applied, the runtime switches into the ready state.
+
+The apply method flags all updated modules as invalid. For each invalid module, there 
+needs to be an update handler in the module or update handlers in its parent(s). Otherwise, 
+the invalid flag bubbles up and marks its parent(s) as invalid too. Each bubble continues 
+until the app's entry point or a module with an update handler is reached (whichever comes first). 
+If it bubbles up from an entry point, the process fails.
+
+Afterwards, all invalid modules are disposed (via the dispose handler) and unloaded. 
+The current hash is then updated and all "accept" handlers are called. The runtime switches 
+back to the idle state and everything continues as normal.
+
+What can I do with it?
+
+You can use it in development as a LiveReload replacement. webpack-dev-server 
+supports a hot mode in which it tries to update with HMR before trying to reload 
+the whole page. See how to implement HMR with React as an example.
+
+Some loaders already generate modules that are hot-updatable. For example, the 
+style-loader can swap out a page's stylesheets. For modules like this, 
+you don't need to do anything special.
+
+webpack's power lies in its customizability, and there are many ways of configuring 
+HMR depending on the needs of a particular project.
+
